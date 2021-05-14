@@ -23,13 +23,13 @@ const char remote_html[] PROGMEM = R"=====(
   <br><br><br>
   <center>
    <h1>** SABA 6-3D Remote Control **</h1>
-   <button class="button" onclick="httpGet('dial_moveleft=30000')">&lt&lt</button>
+   <button class="button" onmousedown="httpGet('dial_moveleft=30000')" onmouseup="httpGet('dial_stop')">&lt&lt</button>
    <button class="button" onclick="httpGet('dial_searchleft=100')">&lt</button>
    <button class="button" onclick="httpGet('dial_stop')">STOP</button>
    <button class="button" onclick="httpGet('dial_searchright=100')">&gt</button>
-   <button class="button" onclick="httpGet('dial_moveright=30000')">&gt&gt</button>
-   <button class="button" onclick="httpGet('amp_downvolume=500')">VOL-</button>
-   <button class="button" onclick="httpGet('amp_upvolume=500')">VOL+</button>
+   <button class="button" onmousedown="httpGet('dial_moveright=30000')" onmouseup="httpGet('dial_stop')">&gt&gt</button>
+   <button class="button" onmousedown="httpGet('amp_downvolume=15000')" onmouseup="httpGet('amp_stopvolume')">VOL-</button>
+   <button class="button" onmousedown="httpGet('amp_upvolume=15000')" onmouseup="httpGet('amp_stopvolume')">VOL+</button>
    <button class="button" onclick="httpGet('amp_mute')">(un)MUTE</button>
   </center>
   <script>

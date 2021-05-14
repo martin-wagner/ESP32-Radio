@@ -5049,6 +5049,7 @@ const char* analyzeCmd ( const char* str )
 //   dial_stop                              // Stop moving dial pointer                            *
 //   amp_upvolume     = 500                 // Rotate volume knob to increase current volume       *
 //   amp_downvolume   = 500                 // Rotate volume knob to decrease current volume       *
+//   amp_stopvolume                         // Stop rotating knob													         *
 //   amp_mute                               // Mute/unmute the audio amp (toggle)                  *
 //  Commands marked with "*)" are sensible during initialization only                              *
 //**************************************************************************************************
@@ -5385,6 +5386,10 @@ const char* analyzeCmd ( const char* par, const char* val )
   else if ( argument == "amp_upvolume" )              // Increase radio amp volume
   {
     dbgprint ( "todo up vol" ) ;
+  }
+  else if ( argument == "amp_stopvolume" )            // Stop changing volume
+  {
+    dbgprint ( "todo stop vol" ) ;
   }
   else if ( argument == "amp_mute" )                  // (un)mute radio amp
   {

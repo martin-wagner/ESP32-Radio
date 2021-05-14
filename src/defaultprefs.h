@@ -4,12 +4,12 @@
 const char defprefs_txt[] PROGMEM = R"=====(
 # Example configuration
 # Programmable input pins:
-gpio_00 = uppreset = 1
-gpio_12 = upvolume = 2
-gpio_13 = downvolume = 2
-gpio_14 = stop
-gpio_17 = resume
-gpio_34 = station = icecast.omroep.nl:80/radio1-bb-mp3
+#gpio_00 = uppreset = 1
+#gpio_12 = upvolume = 2
+#gpio_13 = downvolume = 2
+#gpio_14 = stop
+#gpio_17 = resume
+#gpio_34 = station = icecast.omroep.nl:80/radio1-bb-mp3
 #
 # MQTT settings
 mqttbroker = none
@@ -19,7 +19,7 @@ mqttpasswd = none
 mqqprefix = none
 # Enter your WiFi network specs here:
 wifi_00 = SSID1/PASSWD1
-wifi_01 = SSID2/PASSWD2
+#wifi_01 = SSID2/PASSWD2
 #
 volume = 72
 toneha = 0
@@ -51,14 +51,14 @@ ir_40BF = upvolume = 2
 ir_C03F = downvolume = 2
 # GPIO pinnings
 pin_ir = 35                                          # GPIO Pin number for IR receiver VS1838B
-pin_enc_clk = 25                                     # GPIO Pin number for rotary encoder "CLK"
-pin_enc_dt = 26                                      # GPIO Pin number for rotary encoder "DT"
-pin_enc_sw = 27                                      # GPIO Pin number for rotary encoder "SW"
+#pin_enc_clk = 25                                     # GPIO Pin number for rotary encoder "CLK"
+#pin_enc_dt = 26                                      # GPIO Pin number for rotary encoder "DT"
+#pin_enc_sw = 27                                      # GPIO Pin number for rotary encoder "SW"
 #
-pin_tft_cs = 15                                      # GPIO Pin number for TFT "CS"
-pin_tft_dc = 2                                       # GPIO Pin number for TFT "DC"
+#pin_tft_cs = 15                                      # GPIO Pin number for TFT "CS"
+#pin_tft_dc = 2                                       # GPIO Pin number for TFT "DC"
 #
-pin_sd_cs = 21                                       # GPIO Pin number for SD card "CS"
+pin_sd_cs = 22                                       # GPIO Pin number for SD card "CS"
 #
 pin_vs_cs = 5                                        # GPIO Pin number for VS1053 "CS"
 pin_vs_dcs = 32                                      # GPIO Pin number for VS1053 "DCS"

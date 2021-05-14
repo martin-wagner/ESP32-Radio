@@ -14,8 +14,9 @@ const char index_html[] PROGMEM = R"=====(
   <ul>
    <li><a class="pull-left" href="#">ESP32 Radio</a></li>
    <li><a class="pull-left active" href="/index.html">Control</a></li>
-   <li><a class="pull-left" href="/config.html">Config</a></li>
    <li><a class="pull-left" href="/search.html">Search</a></li>
+   <li><a class="pull-left" href="/remote.html">Remote</a></li>
+   <li><a class="pull-left" href="/config.html">Config</a></li>
    <li><a class="pull-left" href="/mp3play.html">MP3 player</a></li>
    <li><a class="pull-left" href="/about.html">About</a></li>
   </ul>

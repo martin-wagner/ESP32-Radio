@@ -19,7 +19,7 @@ environment/project/io.sloeber.core.toolChain.release.957441138/A.BUILD.BOOT/ope
 environment/project/io.sloeber.core.toolChain.release.957441138/A.BUILD.BOOT/value=dio
 environment/project/io.sloeber.core.toolChain.release.957441138/A.BUILD.CODE_DEBUG/delimiter=\:
 environment/project/io.sloeber.core.toolChain.release.957441138/A.BUILD.CODE_DEBUG/operation=replace
-environment/project/io.sloeber.core.toolChain.release.957441138/A.BUILD.CODE_DEBUG/value=2
+environment/project/io.sloeber.core.toolChain.release.957441138/A.BUILD.CODE_DEBUG/value=1
 environment/project/io.sloeber.core.toolChain.release.957441138/A.BUILD.CORE.PATH/delimiter=\:
 environment/project/io.sloeber.core.toolChain.release.957441138/A.BUILD.CORE.PATH/operation=replace
 environment/project/io.sloeber.core.toolChain.release.957441138/A.BUILD.CORE.PATH/value=${eclipse_home}/arduinoPlugin/packages/esp32/hardware/esp32/1.0.6/cores/esp32
@@ -424,10 +424,10 @@ environment/project/io.sloeber.core.toolChain.release.957441138/JANTJE.BOARD_NAM
 environment/project/io.sloeber.core.toolChain.release.957441138/JANTJE.BOARD_NAME/value=DOIT ESP32 DEVKIT V1
 environment/project/io.sloeber.core.toolChain.release.957441138/JANTJE.COM_PORT/delimiter=\:
 environment/project/io.sloeber.core.toolChain.release.957441138/JANTJE.COM_PORT/operation=replace
-environment/project/io.sloeber.core.toolChain.release.957441138/JANTJE.COM_PORT/value=/dev/ttyUSB0
+environment/project/io.sloeber.core.toolChain.release.957441138/JANTJE.COM_PORT/value=/dev/ttyUSB1
 environment/project/io.sloeber.core.toolChain.release.957441138/JANTJE.ECLIPSE_LOCATION/delimiter=\:
 environment/project/io.sloeber.core.toolChain.release.957441138/JANTJE.ECLIPSE_LOCATION/operation=replace
-environment/project/io.sloeber.core.toolChain.release.957441138/JANTJE.ECLIPSE_LOCATION/value=${eclipse_home}//////
+environment/project/io.sloeber.core.toolChain.release.957441138/JANTJE.ECLIPSE_LOCATION/value=${eclipse_home}////////////////
 environment/project/io.sloeber.core.toolChain.release.957441138/JANTJE.EXTRA.ALL/delimiter=\:
 environment/project/io.sloeber.core.toolChain.release.957441138/JANTJE.EXTRA.ALL/operation=replace
 environment/project/io.sloeber.core.toolChain.release.957441138/JANTJE.EXTRA.ALL/value=
@@ -451,7 +451,7 @@ environment/project/io.sloeber.core.toolChain.release.957441138/JANTJE.EXTRA.LIN
 environment/project/io.sloeber.core.toolChain.release.957441138/JANTJE.EXTRA.LINK/value=
 environment/project/io.sloeber.core.toolChain.release.957441138/JANTJE.MENU/delimiter=\:
 environment/project/io.sloeber.core.toolChain.release.957441138/JANTJE.MENU/operation=replace
-environment/project/io.sloeber.core.toolChain.release.957441138/JANTJE.MENU/value=DebugLevel\=warn\nFlashFreq\=80\nUploadSpeed\=921600
+environment/project/io.sloeber.core.toolChain.release.957441138/JANTJE.MENU/value=DebugLevel\=error\nFlashFreq\=80\nUploadSpeed\=921600
 environment/project/io.sloeber.core.toolChain.release.957441138/JANTJE.OBJCOPY/delimiter=\:
 environment/project/io.sloeber.core.toolChain.release.957441138/JANTJE.OBJCOPY/operation=replace
 environment/project/io.sloeber.core.toolChain.release.957441138/JANTJE.OBJCOPY/value=${A.RECIPE.OBJCOPY.BIN.PATTERN}\n\t${A.RECIPE.OBJCOPY.HEX.PATTERN}\n\t${A.RECIPE.OBJCOPY.PARTITIONS.BIN.PATTERN}

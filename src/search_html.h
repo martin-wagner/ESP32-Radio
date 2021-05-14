@@ -14,6 +14,7 @@ const char search_html[] PROGMEM = R"=====(<!DOCTYPE html>
    <li><a class="pull-left" href="#">ESP32 Radio</a></li>
    <li><a class="pull-left" href="/index.html">Control</a></li>
    <li><a class="pull-left active" href="/search.html">Search</a></li>
+   <li><a class="pull-left" href="/remote.html">Remote</a></li>
    <li><a class="pull-left" href="/config.html">Config</a></li>
    <li><a class="pull-left" href="/mp3play.html">MP3 player</a></li>
    <li><a class="pull-left" href="/about.html">About</a></li>

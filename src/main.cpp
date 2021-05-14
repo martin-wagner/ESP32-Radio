@@ -169,19 +169,20 @@
 #define VERSION     "Thu, 29 Apr 2021 09:20:00 GMT"
 // ESP32-Radio can be updated (OTA) to the latest version from a remote server.
 // The download uses the following server and files:
-#define UPDATEHOST  "smallenburg.nl"                    // Host for software updates
+//#define UPDATEHOST  "smallenburg.nl"                    // Host for software updates
+#define UPDATEHOST  "127.0.0.1"                           // no automatic update
 #define BINFILE     "/Arduino/ESP32_radio/firmware.bin" // Binary file name for update software
 #define TFTFILE     "/Arduino/ESP32-Radio.tft"          // Binary file name for update NEXTION image
 //
 // Define type of local filesystem(s).  See documentation.
 //#define CH376                          // For CXH376 support (reading files from USB stick)
-//#define SDCARD                         // For SD card support (reading files from SD card)
+#define SDCARD                         // For SD card support (reading files from SD card)
 // Define (just one) type of display.  See documentation.
-#define BLUETFT                        // Works also for RED TFT 128x160
+//#define BLUETFT                        // Works also for RED TFT 128x160
 //#define OLED1306                     // 64x128 I2C OLED SSD1306
 //#define OLED1309                     // 64x128 I2C OLED SSD1309
 //#define OLED1106                     // 64x128 I2C OLED SH1106
-//#define DUMMYTFT                     // Dummy display
+#define DUMMYTFT                     // Dummy display
 //#define LCD1602I2C                   // LCD 1602 display with I2C backpack
 //#define LCD2004I2C                   // LCD 2004 display with I2C backpack
 //#define ILI9341                      // ILI9341 240*320
@@ -222,7 +223,8 @@
 // Position (column) of time in topline relative to end
 #define TIMEPOS -52
 // SPI speed for SD card
-#define SDSPEED 1000000
+//#define SDSPEED 1000000
+#define SDSPEED 8000000 //we have proper pcb...
 // Size of metaline buffer
 #define METASIZ 1024
 // Max. number of NVS keys in table
@@ -561,6 +563,7 @@ touchpin_struct   touchpin[] =                           // Touch pins and progr
 #include "about_html.h"
 #include "config_html.h"
 #include "index_html.h"
+#include "remote_html.h"
 #include "mp3play_html.h"
 #include "radio_css.h"
 #include "favicon_ico.h"
@@ -3273,6 +3276,7 @@ void setup()
   if ( mp3play_html_version < 180918 ) dbgprint ( wvn, "mp3play" ) ;
   if ( defaultprefs_version < 180816 ) dbgprint ( wvn, "defaultprefs" ) ;
   if ( search_html_version  < 210215 ) dbgprint ( wvn, "searchprefs" ) ;
+  if ( remote_html_version  < 210514 ) dbgprint ( wvn, "remote" ) ;
   // Print some memory and sketch info
   dbgprint ( "Starting ESP32-radio running on CPU %d at %d MHz.  Version %s.  Free memory %d",
              xPortGetCoreID(),
@@ -4884,6 +4888,11 @@ void handleFSf ( const String& pagename )
       p = search_html ;
       l = sizeof ( search_html ) ;
     }
+    else if ( pagename.indexOf ( "remote.html" ) >= 0 ) // Remote page is in PROGMEM
+    {
+      p = remote_html ;
+      l = sizeof ( remote_html ) ;
+    }
     else if ( pagename.indexOf ( "config.html" ) >= 0 ) // Config page is in PROGMEM
     {
       p = config_html ;
@@ -5032,6 +5041,15 @@ const char* analyzeCmd ( const char* str )
 //   bat0       = 2318                      // ADC value for an empty battery                      *
 //   bat100     = 2916                      // ADC value for a fully charged battery               *
 //   fs         = USB or SD                 // Select local filesystem for MP# player mode.        *
+// Radio control commands, values in <ms>.
+//   dial_moveleft    = 1000                // Fast move dial pointer                              *
+//   dial_moveright   = 1000                //                                                     *
+//   dial_searchleft  = 100                 // Move dial pointer, then search for station          *
+//   dial_searchright = 100                 //                                                     *
+//   dial_stop                              // Stop moving dial pointer                            *
+//   amp_upvolume     = 500                 // Rotate volume knob to increase current volume       *
+//   amp_downvolume   = 500                 // Rotate volume knob to decrease current volume       *
+//   amp_mute                               // Mute/unmute the audio amp (toggle)                  *
 //  Commands marked with "*)" are sensible during initialization only                              *
 //**************************************************************************************************
 const char* analyzeCmd ( const char* par, const char* val )
@@ -5083,7 +5101,8 @@ const char* analyzeCmd ( const char* par, const char* val )
     dbgprint ( "Command: %s (without parameter)",
                argument.c_str() ) ;
   }
-  if ( argument.indexOf ( "volume" ) >= 0 )           // Volume setting?
+  if ((argument.indexOf ( "volume" ) >= 0 ) &&        // Volume setting?
+      (argument.indexOf ( "amp_" ) < 0 ))             // Not power amp Volume
   {
     // Volume may be of the form "upvolume", "downvolume" or "volume" for relative or absolute setting
     oldvol = vs1053player->getVolume() ;              // Get current volume
@@ -5338,6 +5357,38 @@ const char* analyzeCmd ( const char* par, const char* val )
     {
       usb_sd = FS_SD ;                                // Otherwise to SD
     }
+  }
+  else if ( argument == "dial_moveleft" )             // Move dial pointer to the left
+  {
+    dbgprint ( "todo dial move left" ) ;
+  }
+  else if ( argument == "dial_moveright" )            // Move dial pointer to the right
+  {
+    dbgprint ( "todo dial move right" ) ;
+  }
+  else if ( argument == "dial_searchleft" )           // Search station to the left
+  {
+    dbgprint ( "todo dial search left" ) ;
+  }
+  else if ( argument == "dial_searchright" )          // Search station to the right
+  {
+    dbgprint ( "todo dial search right" ) ;
+  }
+  else if ( argument == "dial_stop" )                 // Stop at current position
+  {
+    dbgprint ( "todo dial stop" ) ;
+  }
+  else if ( argument == "amp_downvolume" )            // Decrease radio amp volume
+  {
+    dbgprint ( "todo down vol" ) ;
+  }
+  else if ( argument == "amp_upvolume" )              // Increase radio amp volume
+  {
+    dbgprint ( "todo up vol" ) ;
+  }
+  else if ( argument == "amp_mute" )                  // (un)mute radio amp
+  {
+    dbgprint ( "todo mute vol" ) ;
   }
   else
   {

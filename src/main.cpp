@@ -260,6 +260,8 @@ void        tftset ( uint16_t inx, const char *str ) ;
 void        tftset ( uint16_t inx, String& str ) ;
 void        playtask ( void * parameter ) ;             // Task to play the stream
 void        spftask ( void * parameter ) ;              // Task for special functions
+void        relaytask ( void * parameter ) ;            // Task relay control
+void        inputtask ( void * parameter ) ;            // Task radio inputs
 void        gettime() ;
 void        reservepin ( int8_t rpinnr ) ;
 void        claimSPI ( const char* p ) ;                // Claim SPI bus for exclusive access
@@ -328,6 +330,19 @@ struct ini_struct
   int8_t         spi_mosi_pin ;                       // GPIO connected to SPI MOSI pin
   int8_t         ch376_cs_pin ;                       // GPIO connected to CH376 SS
   int8_t         ch376_int_pin ;                      // GPIO connected to CH376 INT
+  int8_t         saba_power1_pin ;                    // GPIO connected to power toggle bistable relay coil 1
+  int8_t         saba_power2_pin ;                    // GPIO connected to power toggle bistable relay coil 2
+  int8_t         saba_power_fb_pin ;                  // GPIO connected to power toggle bistable relay current state feedback
+  int8_t         saba_vol_up_pin ;                    // GPIO connected to volume up relay
+  int8_t         saba_vol_down_pin ;                  // GPIO connected to volume down relay
+  int8_t         saba_vol_mute_pin ;                  // GPIO connected to mute relay
+  int8_t         saba_move_left_pin ;                 // GPIO connected to move left relay
+  int8_t         saba_move_right_pin ;                // GPIO connected to move right relay
+  int8_t         saba_move_fast_pin ;                 // GPIO connected to fast movement relay
+  int8_t         saba_move_direction_pin ;            // GPIO connected to movement direction input
+  int8_t         saba_move_is_fast_pin ;              // GPIO connected to is movement fast active input
+  int8_t         saba_move_is_slow_pin ;              // GPIO connected to is movement slow active input
+  int8_t         saba_search_hold_pin ;               // GPIO connected to search hold / station found input
   uint16_t       bat0 ;                               // ADC value for 0 percent battery charge
   uint16_t       bat100 ;                             // ADC value for 100 percent battery charge
 } ;
@@ -365,6 +380,28 @@ struct keyname_t                                      // For keys in NVS
   char      Key[16] ;                                 // Max length is 15 plus delimeter
 } ;
 
+// Saba Remote Control Stuff
+enum class Saba_remote_control_cmd {
+  DIAL_MOVELEFT,            // Fast move dial pointe
+  DIAL_MOVERIGHT,
+  DIAL_SEARCHLEFT,          // Move dial pointer, then search for station
+  DIAL_SEARCHRIGHT,
+  DIAL_STOP,                // Stop moving dial pointer
+  DIAL_STATION_ACTIVE,      // Radio station active at current dial position
+  AMP_UPVOL,                // Rotate volume knob to increase current volume
+  AMP_DOWNVOL,              // Rotate volume knob to decrease current volume
+  AMP_STOPVOL,              // Stop rotating knob
+  AMP_MUTE,                 // Mute/unmute the audio amp (toggle)
+};
+
+using Time_ms = uint32_t;   // time in milliseconds
+
+struct Saba_remote_control {
+  Saba_remote_control_cmd cmd;
+  Time_ms time;
+};                        // Mute/unmute the audio amp (toggle)
+
+
 //**************************************************************************************************
 // Global data section.                                                                            *
 //**************************************************************************************************
@@ -398,6 +435,8 @@ HardwareSerial*   nxtserial = NULL ;                     // Serial port for NEXT
 TaskHandle_t      maintask ;                             // Taskhandle for main task
 TaskHandle_t      xplaytask ;                            // Task handle for playtask
 TaskHandle_t      xspftask ;                             // Task handle for special functions
+TaskHandle_t      xrelaytask ;                           // Task handle for relay control
+TaskHandle_t      xinputtask ;                           // Task handle for radio input
 SemaphoreHandle_t SPIsem = NULL ;                        // For exclusive SPI usage
 hw_timer_t*       timer = NULL ;                         // For timer
 char              timetxt[9] ;                           // Converted timeinfo
@@ -405,6 +444,7 @@ char              cmd[130] ;                             // Command from MQTT or
 uint8_t           tmpbuff[6000] ;                        // Input buffer for mp3 or data stream 
 QueueHandle_t     dataqueue ;                            // Queue for mp3 datastream
 QueueHandle_t     spfqueue ;                             // Queue for special functions
+QueueHandle_t     relayqueue ;                           // Queue for relay commands
 qdata_struct      outchunk ;                             // Data to queue
 qdata_struct      inchunk ;                              // Data from queue
 uint8_t*          outqp = outchunk.buf ;                 // Pointer to buffer in outchunk
@@ -447,7 +487,7 @@ uint32_t          ir_0 = 550 ;                           // Average duration of 
 uint32_t          ir_1 = 1650 ;                          // Average duration of an IR long pulse
 struct tm         timeinfo ;                             // Will be filled by NTP server
 bool              time_req = false ;                     // Set time requested
-uint16_t          adcval ;                               // ADC value (battery voltage)
+//uint16_t          adcval ;                               // ADC value (battery voltage) (gpio used otherwise)
 uint32_t          clength ;                              // Content length found in http header
 uint32_t          max_mp3loop_time = 0 ;                 // To check max handling time in mp3loop (msec)
 int16_t           scanios ;                              // TEST*TEST*TEST
@@ -525,7 +565,7 @@ progpin_struct   progpin[] =                             // Input pins and progr
   { 33, false, false,  "", false },
   { 34, false, false,  "", false },                      // Note, no internal pull-up
   { 35, false, false,  "", false },                      // Note, no internal pull-up
-  //{ 36, true,  false,  "", false },                    // Reserved for ADC battery level
+  { 36, false,  false,  "", false },                     //
   { 39, false,  false,  "", false },                     // Note, no internal pull-up
   { -1, false, false,  "", false }                       // End of list
 } ;
@@ -1314,9 +1354,12 @@ void claimSPI ( const char* p )
                  p ) ;
       dbgprint ( "Semaphore is claimed by %s", old_id ) ;
     }
-    if ( count >= 100 )
+    //if ( count >= 100 )
+    if ( count >= 1000 )
     {
-      return ;                                               // Continue without semaphore
+      //return ;                                               // Continue without semaphore
+      dbgprint ( "Semaphore hang / Deadlock by %s, resetting...", old_id ) ;
+      ESP.restart() ;                                        // hang / deadlock
     }
   }
   old_id = p ;                                               // Remember ID holding the semaphore
@@ -2600,6 +2643,19 @@ void readIOprefs()
     { "pin_spi_sck",   &ini_block.spi_sck_pin,      18 },
     { "pin_spi_miso",  &ini_block.spi_miso_pin,     19 },
     { "pin_spi_mosi",  &ini_block.spi_mosi_pin,     23 },
+    { "pin_saba_power1",        &ini_block.saba_power1_pin,         -1 },//todo
+    { "pin_saba_power2",        &ini_block.saba_power2_pin,         -1 },//todo
+    { "pin_saba_power_fb",      &ini_block.saba_power_fb_pin,       -1 },//todo implement into hardware
+    { "pin_saba_vol_up",        &ini_block.saba_vol_up_pin,          2 },
+    { "pin_saba_vol_down",      &ini_block.saba_vol_down_pin,       15 },
+    { "pin_saba_vol_mute",      &ini_block.saba_vol_mute_pin,       16 },
+    { "pin_saba_move_left",     &ini_block.saba_move_left_pin,      14 },
+    { "pin_saba_move_right",    &ini_block.saba_move_right_pin,     13 },
+    { "pin_saba_move_fast",     &ini_block.saba_move_fast_pin,      12 },
+    { "pin_saba_move_dir",      &ini_block.saba_move_direction_pin, 27 },
+    { "pin_saba_move_is_fast",  &ini_block.saba_move_is_fast_pin,   33 },
+    { "pin_saba_move_is_slow",  &ini_block.saba_move_is_slow_pin,   34 },
+    { "pin_saba_search_hold",   &ini_block.saba_search_hold_pin,    36 },
     { NULL,            NULL,                        0  }  // End of list
   } ;
   int         i ;                                         // Loop control
@@ -3355,6 +3411,7 @@ void setup()
     }
     dbgprint ( "GPIO%d is %s", pinnr, p ) ;
   }
+
   readprogbuttons() ;                                    // Program the free input pins
   SPI.begin ( ini_block.spi_sck_pin,                     // Init VSPI bus with default or modified pins
               ini_block.spi_miso_pin,
@@ -3492,8 +3549,8 @@ void setup()
                    dsp_getheight() - 8, BLACK ) ;
   }
   outchunk.datatyp = QDATA ;                              // This chunk dedicated to QDATA
-  adc1_config_width ( ADC_WIDTH_12Bit ) ;
-  adc1_config_channel_atten ( ADC1_CHANNEL_0, ADC_ATTEN_0db ) ;
+//  adc1_config_width ( ADC_WIDTH_12Bit ) ;
+//  adc1_config_channel_atten ( ADC1_CHANNEL_0, ADC_ATTEN_0db ) ;
   dataqueue = xQueueCreate ( QSIZ,                        // Create queue for communication
                              sizeof ( qdata_struct ) ) ;
   xTaskCreatePinnedToCore (
@@ -3501,7 +3558,7 @@ void setup()
     "Playtask",                                           // name of task.
     1600,                                                 // Stack size of task
     NULL,                                                 // parameter of the task
-    2,                                                    // priority of the task
+    3,                                                    // priority of the task
     &xplaytask,                                           // Task handle to keep track of created task
     0 ) ;                                                 // Run on CPU 0
   xTaskCreate (
@@ -3511,6 +3568,22 @@ void setup()
     NULL,                                                 // parameter of the task
     1,                                                    // priority of the task
     &xspftask ) ;                                         // Task handle to keep track of created task
+  xTaskCreate (                                           // Task that controls remote control relays
+    relaytask,
+    "Relaytask",
+    1024,
+    NULL,
+    1,                                                    // run when nothing else to do, but above idle task
+    &xrelaytask);
+  relayqueue = xQueueCreate(10, sizeof(Saba_remote_control));
+  xTaskCreate (                                           // Task that reads the inputs from the radio
+    inputtask,
+    "Inputtask",
+    1024,
+    NULL,
+    2,                                                    // needs to keep -more or less accurate- timing
+    &xinputtask);
+
 }
 
 
@@ -5041,7 +5114,7 @@ const char* analyzeCmd ( const char* str )
 //   bat0       = 2318                      // ADC value for an empty battery                      *
 //   bat100     = 2916                      // ADC value for a fully charged battery               *
 //   fs         = USB or SD                 // Select local filesystem for MP# player mode.        *
-// Radio control commands, values in <ms>.
+// Radio remote control commands, values in <ms>.                                                  *
 //   dial_moveleft    = 1000                // Fast move dial pointer                              *
 //   dial_moveright   = 1000                //                                                     *
 //   dial_searchleft  = 100                 // Move dial pointer, then search for station          *
@@ -5049,7 +5122,7 @@ const char* analyzeCmd ( const char* str )
 //   dial_stop                              // Stop moving dial pointer                            *
 //   amp_upvolume     = 500                 // Rotate volume knob to increase current volume       *
 //   amp_downvolume   = 500                 // Rotate volume knob to decrease current volume       *
-//   amp_stopvolume                         // Stop rotating knob													         *
+//   amp_stopvolume                         // Stop rotating knob                                  *
 //   amp_mute                               // Mute/unmute the audio amp (toggle)                  *
 //  Commands marked with "*)" are sensible during initialization only                              *
 //**************************************************************************************************
@@ -5063,6 +5136,7 @@ const char* analyzeCmd ( const char* par, const char* val )
   bool               relative ;                       // Relative argument (+ or -)
   String             tmpstr ;                         // Temporary for value
   uint32_t           av ;                             // Available in stream/file
+  Saba_remote_control request;
 
   blset ( true ) ;                                    // Enable backlight of TFT
   strcpy ( reply, "Command accepted" ) ;              // Default reply
@@ -5257,7 +5331,9 @@ const char* analyzeCmd ( const char* par, const char* val )
     dbgprint ( "Stack maintask is %d", uxTaskGetStackHighWaterMark ( maintask ) ) ;
     dbgprint ( "Stack playtask is %d", uxTaskGetStackHighWaterMark ( xplaytask ) ) ;
     dbgprint ( "Stack spftask  is %d", uxTaskGetStackHighWaterMark ( xspftask ) ) ;
-    dbgprint ( "ADC reading is %d", adcval ) ;
+    dbgprint ( "Stack relaytask  is %d", uxTaskGetStackHighWaterMark ( xrelaytask ) ) ;
+    dbgprint ( "Stack inputtask  is %d", uxTaskGetStackHighWaterMark ( xinputtask ) ) ;
+//    dbgprint ( "ADC reading is %d", adcval ) ;
     dbgprint ( "scaniocount is %d", scaniocount ) ;
     dbgprint ( "Max. mp3_loop duration is %d", max_mp3loop_time ) ;
     dbgprint ( "%d IR interrupts seen", ir_intcount ) ;
@@ -5361,39 +5437,57 @@ const char* analyzeCmd ( const char* par, const char* val )
   }
   else if ( argument == "dial_moveleft" )             // Move dial pointer to the left
   {
-    dbgprint ( "todo dial move left" ) ;
+    request.cmd = Saba_remote_control_cmd::DIAL_MOVELEFT;
+    request.time = ivalue;
+    xQueueSend(relayqueue, &request, 0);
   }
   else if ( argument == "dial_moveright" )            // Move dial pointer to the right
   {
-    dbgprint ( "todo dial move right" ) ;
+    request.cmd = Saba_remote_control_cmd::DIAL_MOVERIGHT;
+    request.time = ivalue;
+    xQueueSend(relayqueue, &request, 0);
   }
   else if ( argument == "dial_searchleft" )           // Search station to the left
   {
-    dbgprint ( "todo dial search left" ) ;
+    request.cmd = Saba_remote_control_cmd::DIAL_SEARCHLEFT;
+    request.time = ivalue;
+    xQueueSend(relayqueue, &request, 0);
   }
   else if ( argument == "dial_searchright" )          // Search station to the right
   {
-    dbgprint ( "todo dial search right" ) ;
+    request.cmd = Saba_remote_control_cmd::DIAL_SEARCHRIGHT;
+    request.time = ivalue;
+    xQueueSend(relayqueue, &request, 0);
   }
   else if ( argument == "dial_stop" )                 // Stop at current position
   {
-    dbgprint ( "todo dial stop" ) ;
+    request.cmd = Saba_remote_control_cmd::DIAL_STOP;
+    request.time = 0;
+    xQueueSend(relayqueue, &request, 0);
   }
   else if ( argument == "amp_downvolume" )            // Decrease radio amp volume
   {
-    dbgprint ( "todo down vol" ) ;
+    request.cmd = Saba_remote_control_cmd::AMP_DOWNVOL;
+    request.time = ivalue;
+    xQueueSend(relayqueue, &request, 0);
   }
   else if ( argument == "amp_upvolume" )              // Increase radio amp volume
   {
-    dbgprint ( "todo up vol" ) ;
+    request.cmd = Saba_remote_control_cmd::AMP_UPVOL;
+    request.time = ivalue;
+    xQueueSend(relayqueue, &request, 0);
   }
   else if ( argument == "amp_stopvolume" )            // Stop changing volume
   {
-    dbgprint ( "todo stop vol" ) ;
+    request.cmd = Saba_remote_control_cmd::AMP_STOPVOL;
+    request.time = 0;
+    xQueueSend(relayqueue, &request, 0);
   }
   else if ( argument == "amp_mute" )                  // (un)mute radio amp
   {
-    dbgprint ( "todo mute vol" ) ;
+    request.cmd = Saba_remote_control_cmd::AMP_MUTE;
+    request.time = 0;
+    xQueueSend(relayqueue, &request, 0);
   }
   else
   {
@@ -5664,8 +5758,42 @@ void spftask ( void * parameter )
   {
     handle_spec() ;                                                 // Maybe some special funcs?
     vTaskDelay ( 100 / portTICK_PERIOD_MS ) ;                       // Pause for a short time
-    adcval = ( 15 * adcval +                                        // Read ADC and do some filtering
-               adc1_get_raw ( ADC1_CHANNEL_0 ) ) / 16 ;
+//    adcval = ( 15 * adcval +                                        // Read ADC and do some filtering
+//               adc1_get_raw ( ADC1_CHANNEL_0 ) ) / 16 ;
   }
   //vTaskDelete ( NULL ) ;                                          // Will never arrive here
 }
+
+//**************************************************************************************************
+//                                     Relay Task                                                  *
+//**************************************************************************************************
+// Receives remote control commands, translates them to control the corresponding relays,
+// ensures timeouts
+//**************************************************************************************************
+void relaytask ( void * parameter )
+{
+  Saba_remote_control request;
+  TickType_t wait = portMAX_DELAY;
+
+  while (true)
+  {
+    xQueueReceive(relayqueue, &request, wait);
+
+
+
+  }
+}
+
+//**************************************************************************************************
+//                                     Input Task                                                  *
+//**************************************************************************************************
+// Checks inputs from radio, issues commands to web radio
+//**************************************************************************************************
+void inputtask ( void * parameter )
+{
+  while (true)
+  {
+    vTaskDelay(100);
+  }
+}
+

@@ -260,7 +260,8 @@ void        tftset ( uint16_t inx, const char *str ) ;
 void        tftset ( uint16_t inx, String& str ) ;
 void        playtask ( void * parameter ) ;             // Task to play the stream
 void        spftask ( void * parameter ) ;              // Task for special functions
-void        relaytask ( void * parameter ) ;            // Task relay control
+void        dialtask ( void * parameter ) ;             // Task handle for dial movement control
+void        amptask ( void * parameter ) ;              // Task handle for audio amp control
 void        inputtask ( void * parameter ) ;            // Task radio inputs
 void        gettime() ;
 void        reservepin ( int8_t rpinnr ) ;
@@ -435,7 +436,8 @@ HardwareSerial*   nxtserial = NULL ;                     // Serial port for NEXT
 TaskHandle_t      maintask ;                             // Taskhandle for main task
 TaskHandle_t      xplaytask ;                            // Task handle for playtask
 TaskHandle_t      xspftask ;                             // Task handle for special functions
-TaskHandle_t      xrelaytask ;                           // Task handle for relay control
+TaskHandle_t      xdialtask ;                            // Task handle for dial movement control
+TaskHandle_t      xamptask ;                            // Task handle for audio amp control
 TaskHandle_t      xinputtask ;                           // Task handle for radio input
 SemaphoreHandle_t SPIsem = NULL ;                        // For exclusive SPI usage
 hw_timer_t*       timer = NULL ;                         // For timer
@@ -444,7 +446,8 @@ char              cmd[130] ;                             // Command from MQTT or
 uint8_t           tmpbuff[6000] ;                        // Input buffer for mp3 or data stream 
 QueueHandle_t     dataqueue ;                            // Queue for mp3 datastream
 QueueHandle_t     spfqueue ;                             // Queue for special functions
-QueueHandle_t     relayqueue ;                           // Queue for relay commands
+QueueHandle_t     dialqueue ;                            // Queue for dial commands
+QueueHandle_t     ampqueue ;                             // Queue for audio amp commands
 qdata_struct      outchunk ;                             // Data to queue
 qdata_struct      inchunk ;                              // Data from queue
 uint8_t*          outqp = outchunk.buf ;                 // Pointer to buffer in outchunk
@@ -3568,18 +3571,26 @@ void setup()
     NULL,                                                 // parameter of the task
     1,                                                    // priority of the task
     &xspftask ) ;                                         // Task handle to keep track of created task
-  xTaskCreate (                                           // Task that controls remote control relays
-    relaytask,
-    "Relaytask",
-    1024,
+  xTaskCreate (                                           // Task that controls dial movement
+    dialtask,
+    "Dialtask",
+    2048,
     NULL,
     1,                                                    // run when nothing else to do, but above idle task
-    &xrelaytask);
-  relayqueue = xQueueCreate(10, sizeof(Saba_remote_control));
+    &xdialtask);
+  dialqueue = xQueueCreate(10, sizeof(Saba_remote_control));
+  xTaskCreate (                                           // Task that controls audio amp, power
+    amptask,
+    "Amptask",
+    2048,
+    NULL,
+    1,                                                    // run when nothing else to do, but above idle task
+    &xamptask);
+  ampqueue = xQueueCreate(10, sizeof(Saba_remote_control));
   xTaskCreate (                                           // Task that reads the inputs from the radio
     inputtask,
     "Inputtask",
-    1024,
+    2048,
     NULL,
     2,                                                    // needs to keep -more or less accurate- timing
     &xinputtask);
@@ -5331,7 +5342,8 @@ const char* analyzeCmd ( const char* par, const char* val )
     dbgprint ( "Stack maintask is %d", uxTaskGetStackHighWaterMark ( maintask ) ) ;
     dbgprint ( "Stack playtask is %d", uxTaskGetStackHighWaterMark ( xplaytask ) ) ;
     dbgprint ( "Stack spftask  is %d", uxTaskGetStackHighWaterMark ( xspftask ) ) ;
-    dbgprint ( "Stack relaytask  is %d", uxTaskGetStackHighWaterMark ( xrelaytask ) ) ;
+    dbgprint ( "Stack dialtask  is %d", uxTaskGetStackHighWaterMark ( xdialtask ) ) ;
+    dbgprint ( "Stack amptask  is %d", uxTaskGetStackHighWaterMark ( xamptask ) ) ;
     dbgprint ( "Stack inputtask  is %d", uxTaskGetStackHighWaterMark ( xinputtask ) ) ;
 //    dbgprint ( "ADC reading is %d", adcval ) ;
     dbgprint ( "scaniocount is %d", scaniocount ) ;
@@ -5439,55 +5451,55 @@ const char* analyzeCmd ( const char* par, const char* val )
   {
     request.cmd = Saba_remote_control_cmd::DIAL_MOVELEFT;
     request.time = ivalue;
-    xQueueSend(relayqueue, &request, 0);
+    xQueueSend(dialqueue, &request, 0);
   }
   else if ( argument == "dial_moveright" )            // Move dial pointer to the right
   {
     request.cmd = Saba_remote_control_cmd::DIAL_MOVERIGHT;
     request.time = ivalue;
-    xQueueSend(relayqueue, &request, 0);
+    xQueueSend(dialqueue, &request, 0);
   }
   else if ( argument == "dial_searchleft" )           // Search station to the left
   {
     request.cmd = Saba_remote_control_cmd::DIAL_SEARCHLEFT;
     request.time = ivalue;
-    xQueueSend(relayqueue, &request, 0);
+    xQueueSend(dialqueue, &request, 0);
   }
   else if ( argument == "dial_searchright" )          // Search station to the right
   {
     request.cmd = Saba_remote_control_cmd::DIAL_SEARCHRIGHT;
     request.time = ivalue;
-    xQueueSend(relayqueue, &request, 0);
+    xQueueSend(dialqueue, &request, 0);
   }
   else if ( argument == "dial_stop" )                 // Stop at current position
   {
     request.cmd = Saba_remote_control_cmd::DIAL_STOP;
     request.time = 0;
-    xQueueSend(relayqueue, &request, 0);
+    xQueueSend(dialqueue, &request, 0);
   }
   else if ( argument == "amp_downvolume" )            // Decrease radio amp volume
   {
     request.cmd = Saba_remote_control_cmd::AMP_DOWNVOL;
     request.time = ivalue;
-    xQueueSend(relayqueue, &request, 0);
+    xQueueSend(ampqueue, &request, 0);
   }
   else if ( argument == "amp_upvolume" )              // Increase radio amp volume
   {
     request.cmd = Saba_remote_control_cmd::AMP_UPVOL;
     request.time = ivalue;
-    xQueueSend(relayqueue, &request, 0);
+    xQueueSend(ampqueue, &request, 0);
   }
   else if ( argument == "amp_stopvolume" )            // Stop changing volume
   {
     request.cmd = Saba_remote_control_cmd::AMP_STOPVOL;
     request.time = 0;
-    xQueueSend(relayqueue, &request, 0);
+    xQueueSend(ampqueue, &request, 0);
   }
   else if ( argument == "amp_mute" )                  // (un)mute radio amp
   {
     request.cmd = Saba_remote_control_cmd::AMP_MUTE;
     request.time = 0;
-    xQueueSend(relayqueue, &request, 0);
+    xQueueSend(ampqueue, &request, 0);
   }
   else
   {
@@ -5765,21 +5777,177 @@ void spftask ( void * parameter )
 }
 
 //**************************************************************************************************
-//                                     Relay Task                                                  *
+//                                     Dial Relay output                                           *
+//**************************************************************************************************
+void set_dial_relay(uint8_t left, uint8_t right, uint8_t fast)
+{
+  if ((left != 0) && (right != 0))
+  {
+    //invalid request
+    left = 0;
+    right = 0;
+    fast = 0;
+  }
+
+  digitalWrite ( ini_block.saba_move_fast_pin , fast ) ;
+  digitalWrite ( ini_block.saba_move_left_pin , left ) ;
+  digitalWrite ( ini_block.saba_move_right_pin , right ) ;
+}
+
+//**************************************************************************************************
+//                                     Dial Task                                                   *
 //**************************************************************************************************
 // Receives remote control commands, translates them to control the corresponding relays,
 // ensures timeouts
 //**************************************************************************************************
-void relaytask ( void * parameter )
+void dialtask ( void * parameter )
+{
+  static const Time_ms MOVEMENT_LIMIT = 30000; //dial moves from either end to the other within this time
+  Saba_remote_control request;
+  TickType_t wait = portMAX_DELAY;
+  bool searching = false;
+
+  //all relays output push-pull, off
+  pinMode ( ini_block.saba_move_fast_pin , OUTPUT ) ;
+  pinMode ( ini_block.saba_move_left_pin , OUTPUT ) ;
+  pinMode ( ini_block.saba_move_right_pin , OUTPUT ) ;
+  set_dial_relay(0, 0, 0);
+
+  while (true)
+  {
+    auto result = xQueueReceive(dialqueue, &request, wait);
+    if (result == pdTRUE) {
+      //request received
+      if (request.time > MOVEMENT_LIMIT)
+      {
+        request.time = MOVEMENT_LIMIT;
+      }
+
+      switch (request.cmd)
+      {
+        case Saba_remote_control_cmd::DIAL_MOVELEFT:
+          searching = false;
+          set_dial_relay(1, 0, 1);
+          dbgprint ( "moving dial to the left" ) ;
+          break;
+        case Saba_remote_control_cmd::DIAL_MOVERIGHT:
+          searching = false;
+          set_dial_relay(0, 1, 0);
+          dbgprint ( "moving dial to the right" ) ;
+          break;
+        case Saba_remote_control_cmd::DIAL_SEARCHLEFT:
+          //start station search:
+          //- slow motor movement
+          //- wait set time (allows leaving current station)
+          //- remove "station active" events from queue (and all others...)
+          //- wait until event
+          searching = true;
+          set_dial_relay(1, 0, 0);
+          vTaskDelay(pdMS_TO_TICKS(request.time));//todo we could also wait for search hold to deassert
+          xQueueReset(dialqueue);
+          request.time = MOVEMENT_LIMIT;
+          dbgprint ( "searching for station to the left" ) ;
+          break;
+        case Saba_remote_control_cmd::DIAL_SEARCHRIGHT:
+          searching = true;
+          set_dial_relay(0, 1, 0);
+          vTaskDelay(pdMS_TO_TICKS(request.time));
+          xQueueReset(dialqueue);
+          request.time = MOVEMENT_LIMIT;
+          dbgprint ( "searching for station to the right" ) ;
+          break;
+        case Saba_remote_control_cmd::DIAL_STATION_ACTIVE:
+          //use station active event only when searching for one
+          if (searching)
+          {
+            //stop, auto-tuning will do the fine adjust by itself
+            set_dial_relay(0, 0, 0);
+            dbgprint ( "station found!" ) ;
+          }
+          searching = false;
+          break;
+        case Saba_remote_control_cmd::DIAL_STOP:
+        default:
+          searching = false;
+          set_dial_relay(0, 0, 0);
+          dbgprint ( "stopping dial movement" ) ;
+          break;
+      }
+
+      if (request.time > 0)
+      {
+        wait = pdMS_TO_TICKS(request.time);
+      }
+      else
+      {
+        wait = portMAX_DELAY;
+      }
+    }
+    else
+    {
+      //timeout
+      set_dial_relay(0, 0, 0);
+
+      searching = false;
+      wait = portMAX_DELAY;
+      dbgprint ( "stopping dial movement (timer)" ) ;
+    }
+
+  }
+}
+
+//**************************************************************************************************
+//                                     Amp Task                                                    *
+//**************************************************************************************************
+// Receives remote control commands, translates them to control the corresponding relays,
+// ensures timeouts. Also handles power on/off
+//**************************************************************************************************
+void amptask ( void * parameter )
 {
   Saba_remote_control request;
   TickType_t wait = portMAX_DELAY;
 
+  //all relays output push-pull, off
+  pinMode ( ini_block.saba_vol_down_pin , OUTPUT ) ;
+  pinMode ( ini_block.saba_vol_up_pin , OUTPUT ) ;
+  pinMode ( ini_block.saba_vol_mute_pin , OUTPUT ) ;
+//  pinMode ( ini_block.saba_power1_pin , OUTPUT ) ;
+//  pinMode ( ini_block.saba_power2_pin , OUTPUT ) ;
+  digitalWrite ( ini_block.saba_vol_down_pin , LOW ) ;
+  digitalWrite ( ini_block.saba_vol_up_pin , LOW ) ;
+  digitalWrite ( ini_block.saba_vol_mute_pin , LOW ) ;
+  //digitalWrite ( ini_block.saba_power1_pin , LOW ) ;
+  //digitalWrite ( ini_block.saba_power2_pin , LOW ) ;
+
   while (true)
   {
-    xQueueReceive(relayqueue, &request, wait);
+    auto result = xQueueReceive(ampqueue, &request, wait);
+    if (result != pdTRUE)
+    {
+      switch (request.cmd)
+      {
+        case Saba_remote_control_cmd::AMP_UPVOL:
+
+          break;
+        case Saba_remote_control_cmd::AMP_DOWNVOL:
+
+          break;
+        case Saba_remote_control_cmd::AMP_STOPVOL:
+
+          break;
+        case Saba_remote_control_cmd::AMP_MUTE:
+
+          break;
+        default:
+          break;
+      }
+    }
+    else
+    {
 
 
+
+    }
 
   }
 }
@@ -5791,9 +5959,35 @@ void relaytask ( void * parameter )
 //**************************************************************************************************
 void inputtask ( void * parameter )
 {
+  //all inputs have level defined on external hardware, disable internal pullup/down
+  pinMode ( ini_block.saba_move_direction_pin , INPUT ) ;
+  gpio_set_pull_mode(static_cast<gpio_num_t>(ini_block.saba_move_direction_pin), gpio_pull_mode_t::GPIO_FLOATING);
+  pinMode ( ini_block.saba_move_is_fast_pin , INPUT ) ;
+  gpio_set_pull_mode(static_cast<gpio_num_t>(ini_block.saba_move_is_fast_pin), gpio_pull_mode_t::GPIO_FLOATING);
+  pinMode ( ini_block.saba_move_is_slow_pin , INPUT ) ;
+  gpio_set_pull_mode(static_cast<gpio_num_t>(ini_block.saba_move_is_slow_pin), gpio_pull_mode_t::GPIO_FLOATING);
+  pinMode ( ini_block.saba_search_hold_pin , INPUT ) ;
+  gpio_set_pull_mode(static_cast<gpio_num_t>(ini_block.saba_search_hold_pin), gpio_pull_mode_t::GPIO_FLOATING);
+//  pinMode ( ini_block.saba_power_fb_pin , INPUT ) ;
+//  gpio_set_pull_mode(static_cast<gpio_num_t>(ini_block.saba_power_fb_pin), gpio_pull_mode_t::GPIO_FLOATING);
+
   while (true)
   {
-    vTaskDelay(100);
+    vTaskDelay(pdMS_TO_TICKS(10));
+    auto input = digitalRead(ini_block.saba_search_hold_pin);
+    if ( ! input) {
+      vTaskDelay(pdMS_TO_TICKS(25)); //debouncing timer
+      input = digitalRead(ini_block.saba_search_hold_pin);
+      if ( ! input) {
+        //assume station found
+        Saba_remote_control request;
+        request.cmd = Saba_remote_control_cmd::DIAL_STATION_ACTIVE;
+        request.time = 0;
+        xQueueSend(dialqueue, &request, 0);
+      }
+    }
+
+
   }
 }
 

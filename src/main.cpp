@@ -5784,14 +5784,27 @@ void set_dial_relay(uint8_t left, uint8_t right, uint8_t fast)
   if ((left != 0) && (right != 0))
   {
     //invalid request
-    left = 0;
-    right = 0;
-    fast = 0;
+    set_dial_relay(0, 0, 0);
+    return;
   }
 
   digitalWrite ( ini_block.saba_move_fast_pin , fast ) ;
-  digitalWrite ( ini_block.saba_move_left_pin , left ) ;
-  digitalWrite ( ini_block.saba_move_right_pin , right ) ;
+
+  if (left)
+  {
+    digitalWrite ( ini_block.saba_move_right_pin , 0 ) ;
+    digitalWrite ( ini_block.saba_move_left_pin , 1 ) ;
+  }
+  else if (right)
+  {
+    digitalWrite ( ini_block.saba_move_left_pin , 0 ) ;
+    digitalWrite ( ini_block.saba_move_right_pin , 1 ) ;
+  }
+  else
+  {
+    digitalWrite ( ini_block.saba_move_right_pin , 0 ) ;
+    digitalWrite ( ini_block.saba_move_left_pin , 0 ) ;
+  }
 }
 
 //**************************************************************************************************

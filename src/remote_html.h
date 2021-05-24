@@ -23,11 +23,16 @@ const char remote_html[] PROGMEM = R"=====(
   <br><br><br>
   <center>
    <h1>** SABA 6-3D Remote Control **</h1>
-   <button class="button" onpointerdown="httpGet('dial_moveleft=30000')" onpointerup="httpGet('dial_stop')">&lt&lt</button>
-   <button class="button" onclick="httpGet('dial_searchleft=250')">&lt</button>
+   <button class="button" onpointerdown="httpGet('dial_fastmoveleft=30000')" onpointerup="httpGet('dial_stop')">&lt&lt</button>
+   <button class="button" onpointerdown="httpGet('dial_moveleft=30000')" onpointerup="httpGet('dial_stop')">&lt</button>
+   <button class="button" onpointerdown="httpGet('dial_moveleft=30000')" onpointerup="httpGet('dial_searchleft=500')">|&lt</button>
    <button class="button" onclick="httpGet('dial_stop')">STOP</button>
-   <button class="button" onclick="httpGet('dial_searchright=250')">&gt</button>
-   <button class="button" onpointerdown="httpGet('dial_moveright=30000')" onpointerup="httpGet('dial_stop')">&gt&gt</button>
+   <button class="button" onpointerdown="httpGet('dial_moveright=30000')" onpointerup="httpGet('dial_searchright=500')">&gt|</button>
+   <button class="button" onpointerdown="httpGet('dial_moveright=30000')" onpointerup="httpGet('dial_stop')">&gt</button>
+   <button class="button" onpointerdown="httpGet('dial_fastmoveright=30000')" onpointerup="httpGet('dial_stop')">&gt&gt</button>
+  </center>
+  <br>
+  <center>
    <button class="button" onpointerdown="httpGet('amp_downvolume=15000')" onpointerup="httpGet('amp_stopvolume')">VOL-</button>
    <button class="button" onpointerdown="httpGet('amp_upvolume=15000')" onpointerup="httpGet('amp_stopvolume')">VOL+</button>
    <button class="button" onclick="httpGet('amp_mute')">(un)MUTE</button>

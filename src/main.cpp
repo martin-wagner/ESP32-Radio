@@ -383,7 +383,9 @@ struct keyname_t                                      // For keys in NVS
 
 // Saba Remote Control Stuff
 enum class Saba_remote_control_cmd {
-  DIAL_MOVELEFT,            // Fast move dial pointe
+  DIAL_FASTMOVELEFT,        // Fast move dial pointer
+  DIAL_FASTMOVERIGHT,
+  DIAL_MOVELEFT,            // Move dial pointer
   DIAL_MOVERIGHT,
   DIAL_SEARCHLEFT,          // Move dial pointer, then search for station
   DIAL_SEARCHRIGHT,
@@ -2649,11 +2651,11 @@ void readIOprefs()
     { "pin_saba_power1",        &ini_block.saba_power1_pin,         -1 },//todo
     { "pin_saba_power2",        &ini_block.saba_power2_pin,         -1 },//todo
     { "pin_saba_power_fb",      &ini_block.saba_power_fb_pin,       -1 },//todo implement into hardware
-    { "pin_saba_vol_up",        &ini_block.saba_vol_up_pin,          2 },
-    { "pin_saba_vol_down",      &ini_block.saba_vol_down_pin,       15 },
+    { "pin_saba_vol_up",        &ini_block.saba_vol_up_pin,         15 },
+    { "pin_saba_vol_down",      &ini_block.saba_vol_down_pin,        2 },
     { "pin_saba_vol_mute",      &ini_block.saba_vol_mute_pin,       16 },
-    { "pin_saba_move_left",     &ini_block.saba_move_left_pin,      14 },
-    { "pin_saba_move_right",    &ini_block.saba_move_right_pin,     13 },
+    { "pin_saba_move_left",     &ini_block.saba_move_left_pin,      13 },
+    { "pin_saba_move_right",    &ini_block.saba_move_right_pin,     14 },
     { "pin_saba_move_fast",     &ini_block.saba_move_fast_pin,      12 },
     { "pin_saba_move_dir",      &ini_block.saba_move_direction_pin, 27 },
     { "pin_saba_move_is_fast",  &ini_block.saba_move_is_fast_pin,   33 },
@@ -3552,8 +3554,9 @@ void setup()
                    dsp_getheight() - 8, BLACK ) ;
   }
   outchunk.datatyp = QDATA ;                              // This chunk dedicated to QDATA
-//  adc1_config_width ( ADC_WIDTH_12Bit ) ;
+  adc1_config_width ( ADC_WIDTH_12Bit ) ;
 //  adc1_config_channel_atten ( ADC1_CHANNEL_0, ADC_ATTEN_0db ) ;
+  adc1_config_channel_atten ( ADC1_CHANNEL_0, ADC_ATTEN_DB_11 ) ;
   dataqueue = xQueueCreate ( QSIZ,                        // Create queue for communication
                              sizeof ( qdata_struct ) ) ;
   xTaskCreatePinnedToCore (
@@ -5126,7 +5129,9 @@ const char* analyzeCmd ( const char* str )
 //   bat100     = 2916                      // ADC value for a fully charged battery               *
 //   fs         = USB or SD                 // Select local filesystem for MP# player mode.        *
 // Radio remote control commands, values in <ms>.                                                  *
-//   dial_moveleft    = 1000                // Fast move dial pointer                              *
+//   dial_fastmoveleft    = 1000            // Fast move dial pointer                              *
+//   dial_fastmoveright   = 1000            //                                                     *
+//   dial_moveleft    = 1000                // Move dial pointer                                   *
 //   dial_moveright   = 1000                //                                                     *
 //   dial_searchleft  = 100                 // Move dial pointer, then search for station          *
 //   dial_searchright = 100                 //                                                     *
@@ -5447,59 +5452,73 @@ const char* analyzeCmd ( const char* par, const char* val )
       usb_sd = FS_SD ;                                // Otherwise to SD
     }
   }
-  else if ( argument == "dial_moveleft" )             // Move dial pointer to the left
+  else if ( argument.startsWith ( "dial_" ) )         // Dial movement command
   {
-    request.cmd = Saba_remote_control_cmd::DIAL_MOVELEFT;
     request.time = ivalue;
-    xQueueSend(dialqueue, &request, 0);
+
+    if ( argument.indexOf ("fastmoveleft") > 0 )      // Move dial pointer to the left (fast speed)
+    {
+      request.cmd = Saba_remote_control_cmd::DIAL_FASTMOVELEFT;
+      xQueueSend(dialqueue, &request, 0);
+    }
+    else if ( argument.indexOf ("fastmoveright") > 0 )// Move dial pointer to the right (fast speed)
+    {
+      request.cmd = Saba_remote_control_cmd::DIAL_FASTMOVERIGHT;
+      xQueueSend(dialqueue, &request, 0);
+    }
+    else if ( argument.indexOf ("moveleft") > 0 )     // Move dial pointer to the left
+    {
+      request.cmd = Saba_remote_control_cmd::DIAL_MOVELEFT;
+      xQueueSend(dialqueue, &request, 0);
+    }
+    else if ( argument.indexOf ("moveright") > 0 )    // Move dial pointer to the right
+    {
+      request.cmd = Saba_remote_control_cmd::DIAL_MOVERIGHT;
+      xQueueSend(dialqueue, &request, 0);
+    }
+    else if ( argument.indexOf ("searchleft") > 0 )   // Search station to the left
+    {
+      request.cmd = Saba_remote_control_cmd::DIAL_SEARCHLEFT;
+      xQueueSend(dialqueue, &request, 0);
+    }
+    else if ( argument.indexOf ("searchright") > 0 )  // Search station to the right
+    {
+      request.cmd = Saba_remote_control_cmd::DIAL_SEARCHRIGHT;
+      xQueueSend(dialqueue, &request, 0);
+    }
+    else if ( argument.indexOf ("stop") > 0 )         // Stop at current position
+    {
+      request.cmd = Saba_remote_control_cmd::DIAL_STOP;
+      request.time = 0;
+      xQueueSend(dialqueue, &request, 0);
+    }
   }
-  else if ( argument == "dial_moveright" )            // Move dial pointer to the right
+  else if ( argument.startsWith ( "amp_" ) )         // Power amp command
   {
-    request.cmd = Saba_remote_control_cmd::DIAL_MOVERIGHT;
     request.time = ivalue;
-    xQueueSend(dialqueue, &request, 0);
-  }
-  else if ( argument == "dial_searchleft" )           // Search station to the left
-  {
-    request.cmd = Saba_remote_control_cmd::DIAL_SEARCHLEFT;
-    request.time = ivalue;
-    xQueueSend(dialqueue, &request, 0);
-  }
-  else if ( argument == "dial_searchright" )          // Search station to the right
-  {
-    request.cmd = Saba_remote_control_cmd::DIAL_SEARCHRIGHT;
-    request.time = ivalue;
-    xQueueSend(dialqueue, &request, 0);
-  }
-  else if ( argument == "dial_stop" )                 // Stop at current position
-  {
-    request.cmd = Saba_remote_control_cmd::DIAL_STOP;
-    request.time = 0;
-    xQueueSend(dialqueue, &request, 0);
-  }
-  else if ( argument == "amp_downvolume" )            // Decrease radio amp volume
-  {
-    request.cmd = Saba_remote_control_cmd::AMP_DOWNVOL;
-    request.time = ivalue;
-    xQueueSend(ampqueue, &request, 0);
-  }
-  else if ( argument == "amp_upvolume" )              // Increase radio amp volume
-  {
-    request.cmd = Saba_remote_control_cmd::AMP_UPVOL;
-    request.time = ivalue;
-    xQueueSend(ampqueue, &request, 0);
-  }
-  else if ( argument == "amp_stopvolume" )            // Stop changing volume
-  {
-    request.cmd = Saba_remote_control_cmd::AMP_STOPVOL;
-    request.time = 0;
-    xQueueSend(ampqueue, &request, 0);
-  }
-  else if ( argument == "amp_mute" )                  // (un)mute radio amp
-  {
-    request.cmd = Saba_remote_control_cmd::AMP_MUTE;
-    request.time = 0;
-    xQueueSend(ampqueue, &request, 0);
+
+    if ( argument.indexOf ("downvolume") > 0 )       // Decrease radio amp volume
+    {
+      request.cmd = Saba_remote_control_cmd::AMP_DOWNVOL;
+      xQueueSend(ampqueue, &request, 0);
+    }
+    if ( argument.indexOf ("upvolume") > 0 )          // Increase radio amp volume
+    {
+      request.cmd = Saba_remote_control_cmd::AMP_UPVOL;
+      xQueueSend(ampqueue, &request, 0);
+    }
+    if ( argument.indexOf ("stopvolume") > 0 )        // Stop changing volume
+    {
+      request.cmd = Saba_remote_control_cmd::AMP_STOPVOL;
+      request.time = 0;
+      xQueueSend(ampqueue, &request, 0);
+    }
+    if ( argument.indexOf ("mute") > 0 )              // (un)mute radio amp
+    {
+      request.cmd = Saba_remote_control_cmd::AMP_MUTE;
+      request.time = 0;
+      xQueueSend(ampqueue, &request, 0);
+    }
   }
   else
   {
@@ -5838,9 +5857,19 @@ void dialtask ( void * parameter )
 
       switch (request.cmd)
       {
-        case Saba_remote_control_cmd::DIAL_MOVELEFT:
+        case Saba_remote_control_cmd::DIAL_FASTMOVELEFT:
           searching = false;
           set_dial_relay(1, 0, 1);
+          dbgprint ( "fast moving dial to the left" ) ;
+          break;
+        case Saba_remote_control_cmd::DIAL_FASTMOVERIGHT:
+          searching = false;
+          set_dial_relay(0, 1, 1);
+          dbgprint ( "fast moving dial to the right" ) ;
+          break;
+        case Saba_remote_control_cmd::DIAL_MOVELEFT:
+          searching = false;
+          set_dial_relay(1, 0, 0);
           dbgprint ( "moving dial to the left" ) ;
           break;
         case Saba_remote_control_cmd::DIAL_MOVERIGHT:
@@ -5910,6 +5939,35 @@ void dialtask ( void * parameter )
 }
 
 //**************************************************************************************************
+//                                     Amp Volume Relay output                                     *
+//**************************************************************************************************
+void set_amp_relay(uint8_t up, uint8_t down)
+{
+  if ((up != 0) && (down != 0))
+  {
+    //invalid request
+    set_amp_relay(0, 0);
+    return;
+  }
+
+  if (up)
+  {
+    digitalWrite ( ini_block.saba_vol_down_pin , 0 ) ;
+    digitalWrite ( ini_block.saba_vol_up_pin , 1 ) ;
+  }
+  else if (down)
+  {
+    digitalWrite ( ini_block.saba_vol_up_pin , 0 ) ;
+    digitalWrite ( ini_block.saba_vol_down_pin, 1 ) ;
+  }
+  else
+  {
+    digitalWrite ( ini_block.saba_vol_up_pin , 0 ) ;
+    digitalWrite ( ini_block.saba_vol_down_pin, 0 ) ;
+  }
+}
+
+//**************************************************************************************************
 //                                     Amp Task                                                    *
 //**************************************************************************************************
 // Receives remote control commands, translates them to control the corresponding relays,
@@ -5917,6 +5975,7 @@ void dialtask ( void * parameter )
 //**************************************************************************************************
 void amptask ( void * parameter )
 {
+  static const Time_ms MOVEMENT_LIMIT = 15000; //pot moves around once in this time
   Saba_remote_control request;
   TickType_t wait = portMAX_DELAY;
 
@@ -5926,42 +5985,69 @@ void amptask ( void * parameter )
   pinMode ( ini_block.saba_vol_mute_pin , OUTPUT ) ;
 //  pinMode ( ini_block.saba_power1_pin , OUTPUT ) ;
 //  pinMode ( ini_block.saba_power2_pin , OUTPUT ) ;
-  digitalWrite ( ini_block.saba_vol_down_pin , LOW ) ;
-  digitalWrite ( ini_block.saba_vol_up_pin , LOW ) ;
-  digitalWrite ( ini_block.saba_vol_mute_pin , LOW ) ;
-  //digitalWrite ( ini_block.saba_power1_pin , LOW ) ;
-  //digitalWrite ( ini_block.saba_power2_pin , LOW ) ;
+  digitalWrite ( ini_block.saba_vol_mute_pin , 0 ) ;
+  set_amp_relay(0, 0);
 
   while (true)
   {
     auto result = xQueueReceive(ampqueue, &request, wait);
-    if (result != pdTRUE)
+    if (result == pdTRUE)
     {
+      //request received
+      if (request.time > MOVEMENT_LIMIT)
+      {
+        request.time = MOVEMENT_LIMIT;
+      }
+
       switch (request.cmd)
       {
         case Saba_remote_control_cmd::AMP_UPVOL:
-
+          set_amp_relay(1, 0);
+          dbgprint ( "volume up" ) ;
           break;
         case Saba_remote_control_cmd::AMP_DOWNVOL:
-
+          set_amp_relay(0, 1);
+          dbgprint ( "volume down" ) ;
           break;
         case Saba_remote_control_cmd::AMP_STOPVOL:
-
+          set_amp_relay(0, 0);
+          dbgprint ( "volume stop" ) ;
           break;
-        case Saba_remote_control_cmd::AMP_MUTE:
-
-          break;
+        case Saba_remote_control_cmd::AMP_MUTE: {
+          auto in = digitalRead(ini_block.saba_vol_mute_pin);
+          if (in == true)
+          {
+            digitalWrite ( ini_block.saba_vol_mute_pin , 0 ) ;
+          }
+          else
+          {
+            digitalWrite ( ini_block.saba_vol_mute_pin , 1 ) ;
+          }
+          dbgprint ( "volume mute" ) ;
+          break; }
         default:
           break;
+      }
+
+      if (request.time > 0)
+      {
+        wait = pdMS_TO_TICKS(request.time);
+      }
+      else
+      {
+        wait = portMAX_DELAY;
       }
     }
     else
     {
+      dbgprint ( "reducing amp volume (timer)" ) ;
+      set_amp_relay(0, 1);
+      vTaskDelay(7500);
+      set_amp_relay(0, 0);
 
-
-
+      wait = portMAX_DELAY;
+      dbgprint ( "stopping amp pot movement (timer)" ) ;
     }
-
   }
 }
 
@@ -5972,6 +6058,11 @@ void amptask ( void * parameter )
 //**************************************************************************************************
 void inputtask ( void * parameter )
 {
+  static const uint32_t adc_oversampling = 10;
+  static const uint32_t search_threshold = 2000; //max. 4095 @ 3.9V
+  uint32_t adcval;
+  uint32_t i;
+
   //all inputs have level defined on external hardware, disable internal pullup/down
   pinMode ( ini_block.saba_move_direction_pin , INPUT ) ;
   gpio_set_pull_mode(static_cast<gpio_num_t>(ini_block.saba_move_direction_pin), gpio_pull_mode_t::GPIO_FLOATING);
@@ -5986,19 +6077,48 @@ void inputtask ( void * parameter )
 
   while (true)
   {
-    vTaskDelay(pdMS_TO_TICKS(10));
-    auto input = digitalRead(ini_block.saba_search_hold_pin);
-    if ( ! input) {
-      vTaskDelay(pdMS_TO_TICKS(25)); //debouncing timer
-      input = digitalRead(ini_block.saba_search_hold_pin);
-      if ( ! input) {
-        //assume station found
-        Saba_remote_control request;
-        request.cmd = Saba_remote_control_cmd::DIAL_STATION_ACTIVE;
-        request.time = 0;
-        xQueueSend(dialqueue, &request, 0);
-      }
+    //read ad value while waiting...
+    adcval = 0;
+    for (i = 0; i < adc_oversampling; i++)
+    {
+      adcval = adcval + adc1_get_raw ( ADC1_CHANNEL_0 ) ;
+      vTaskDelay(1);
     }
+    adcval = adcval / adc_oversampling;
+
+    if (adcval > search_threshold)
+    {
+      //check if really a station
+      for (i = 0; i < 100; i++) {
+        adcval = adcval + adc1_get_raw ( ADC1_CHANNEL_0 ) ;
+        if (adcval < (search_threshold * 8 / 10))
+        {
+          //noise
+          break;
+        }
+        vTaskDelay(1);
+      }
+      //assume station found
+      Saba_remote_control request;
+      request.cmd = Saba_remote_control_cmd::DIAL_STATION_ACTIVE;
+      request.time = 0;
+      xQueueSend(dialqueue, &request, 0);
+
+    }
+    //dbgprint ( "adc %d %d ", xTaskGetTickCount(), adcval ) ;
+
+//    auto input = digitalRead(ini_block.saba_search_hold_pin);
+//    if ( ! input) {
+//      vTaskDelay(pdMS_TO_TICKS(25)); //debouncing timer
+//      input = digitalRead(ini_block.saba_search_hold_pin);
+//      if ( ! input) {
+//        //assume station found
+//        Saba_remote_control request;
+//        request.cmd = Saba_remote_control_cmd::DIAL_STATION_ACTIVE;
+//        request.time = 0;
+//        xQueueSend(dialqueue, &request, 0);
+//      }
+//    }
 
 
   }

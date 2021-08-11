@@ -1,4 +1,5 @@
 # ESP32-Radio
+![alt text](esp32radio.jpg)
 Internet radio based on ESP32, VS1053 and a TFT screen.  Will compile in Arduino IDE.
 See the review by Andreas Spiess at https://www.youtube.com/watch?v=hz65vfvbXMs.
 
@@ -32,10 +33,13 @@ Features:
 - Displays time of day on TFT.
 - Optional display remaining battery capacity on screen.
 - PCB available (see doc).
+- 3D case available (see doc).
 
 See documentation in doc/pdf-file.
 
 Last changes:
+- 28-jun-2021, Allow special characters in station name.
+- 21-jun-2021, Display station name from preference if not in metadata.
 - 29-apr-2021, Fixed SSD1309 bug.
 - 25-apr-2021, Fixed SSD1309 bug, thanks to Juraj Liso.
 - 19-feb-2021, More Oled models.

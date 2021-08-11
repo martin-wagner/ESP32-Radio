@@ -390,7 +390,8 @@ enum class Saba_remote_control_cmd {
   DIAL_SEARCHLEFT,          // Move dial pointer, then search for station
   DIAL_SEARCHRIGHT,
   DIAL_STOP,                // Stop moving dial pointer
-  DIAL_STATION_ACTIVE,      // Radio station active at current dial position
+  DIAL_STATION_ACTIVE,      // Radio station now active at current dial position
+  DIAL_STATION_INACTIVE,    // Radio station not active at current dial position
   AMP_UPVOL,                // Rotate volume knob to increase current volume
   AMP_DOWNVOL,              // Rotate volume knob to decrease current volume
   AMP_STOPVOL,              // Stop rotating knob
@@ -5896,7 +5897,11 @@ void dialtask ( void * parameter )
   static const Time_ms MOVEMENT_LIMIT = 30000; //dial moves from either end to the other within this time
   Saba_remote_control request;
   TickType_t wait = portMAX_DELAY;
-  bool searching = false;
+  enum {  //search state machine
+    NO,
+    WAIT_INACTIVE,
+    WAIT_ACTIVE,
+  } searching = NO;
 
   //all relays output push-pull, off
   pinMode ( ini_block.saba_move_fast_pin , OUTPUT ) ;
@@ -5917,22 +5922,22 @@ void dialtask ( void * parameter )
       switch (request.cmd)
       {
         case Saba_remote_control_cmd::DIAL_FASTMOVELEFT:
-          searching = false;
+          searching = NO;
           set_dial_relay(1, 0, 1);
           dbgprint ( "fast moving dial to the left" ) ;
           break;
         case Saba_remote_control_cmd::DIAL_FASTMOVERIGHT:
-          searching = false;
+          searching = NO;
           set_dial_relay(0, 1, 1);
           dbgprint ( "fast moving dial to the right" ) ;
           break;
         case Saba_remote_control_cmd::DIAL_MOVELEFT:
-          searching = false;
+          searching = NO;
           set_dial_relay(1, 0, 0);
           dbgprint ( "moving dial to the left" ) ;
           break;
         case Saba_remote_control_cmd::DIAL_MOVERIGHT:
-          searching = false;
+          searching = NO;
           set_dial_relay(0, 1, 0);
           dbgprint ( "moving dial to the right" ) ;
           break;
@@ -5940,36 +5945,39 @@ void dialtask ( void * parameter )
           //start station search:
           //- slow motor movement
           //- wait set time (allows leaving current station)
-          //- remove "station active" events from queue (and all others...)
-          //- wait until event
-          searching = true;
+          //- wait until event "gone"
+          //- wait until event "found"
+          searching = WAIT_INACTIVE;
           set_dial_relay(1, 0, 0);
-          vTaskDelay(pdMS_TO_TICKS(request.time));//todo we could also wait for search hold to deassert
-          xQueueReset(dialqueue);
+          vTaskDelay(pdMS_TO_TICKS(request.time));
           request.time = MOVEMENT_LIMIT;
           dbgprint ( "searching for station to the left" ) ;
           break;
         case Saba_remote_control_cmd::DIAL_SEARCHRIGHT:
-          searching = true;
+          searching = WAIT_INACTIVE;
           set_dial_relay(0, 1, 0);
           vTaskDelay(pdMS_TO_TICKS(request.time));
-          xQueueReset(dialqueue);
           request.time = MOVEMENT_LIMIT;
           dbgprint ( "searching for station to the right" ) ;
           break;
+        case Saba_remote_control_cmd::DIAL_STATION_INACTIVE:
+          if (searching == WAIT_INACTIVE) {
+            searching = WAIT_ACTIVE;
+          }
+          break;
         case Saba_remote_control_cmd::DIAL_STATION_ACTIVE:
           //use station active event only when searching for one
-          if (searching)
+          if (searching == WAIT_ACTIVE)
           {
-            //stop, auto-tuning will do the fine adjust by itself
+            //stop, hardware auto-tuning will do the fine adjust by itself
             set_dial_relay(0, 0, 0);
             dbgprint ( "station found!" ) ;
           }
-          searching = false;
+          searching = NO;
           break;
         case Saba_remote_control_cmd::DIAL_STOP:
         default:
-          searching = false;
+          searching = NO;
           set_dial_relay(0, 0, 0);
           dbgprint ( "stopping dial movement" ) ;
           break;
@@ -5989,7 +5997,7 @@ void dialtask ( void * parameter )
       //timeout
       set_dial_relay(0, 0, 0);
 
-      searching = false;
+      searching = NO;
       wait = portMAX_DELAY;
       dbgprint ( "stopping dial movement (timer)" ) ;
     }
@@ -6111,16 +6119,61 @@ void amptask ( void * parameter )
 }
 
 //**************************************************************************************************
+//                           check signal strength / search hold coil input                        *
+//**************************************************************************************************
+void check_station_active(bool &station_active)
+{
+  static const uint32_t search_active_threshold = 2500; //max. 4095 @ 3.9V
+  static const uint32_t search_inactive_threshold = 2000; //max. 4095 @ 3.9V
+  uint32_t adcval;
+
+  //read ad value
+  adcval = adc1_get_raw ( ADC1_CHANNEL_0 ) ;
+
+  if ((adcval > search_active_threshold) && ! station_active)
+  {
+    vTaskDelay(25);
+    adcval = adc1_get_raw ( ADC1_CHANNEL_0 ) ;
+    if (adcval < search_active_threshold)
+    {
+      return;
+    }
+
+    //station found
+    Saba_remote_control request;
+    request.cmd = Saba_remote_control_cmd::DIAL_STATION_ACTIVE;
+    request.time = 0;
+    xQueueSend(dialqueue, &request, 0);
+    station_active = true;
+    dbgprint ( "station active" ) ;
+  }
+  else if  ((adcval < search_inactive_threshold) && station_active)
+  {
+    vTaskDelay(25);
+    adcval = adc1_get_raw ( ADC1_CHANNEL_0 ) ;
+    if (adcval > search_inactive_threshold)
+    {
+      return;
+    }
+
+    //station gone
+    Saba_remote_control request;
+    request.cmd = Saba_remote_control_cmd::DIAL_STATION_INACTIVE;
+    request.time = 0;
+    xQueueSend(dialqueue, &request, 0);
+    station_active = false;
+    dbgprint ( "station gone" ) ;
+  }
+}
+
+//**************************************************************************************************
 //                                     Input Task                                                  *
 //**************************************************************************************************
 // Checks inputs from radio, issues commands to web radio
 //**************************************************************************************************
 void inputtask ( void * parameter )
 {
-  static const uint32_t adc_oversampling = 10;
-  static const uint32_t search_threshold = 2000; //max. 4095 @ 3.9V
-  uint32_t adcval;
-  uint32_t i;
+  bool station_active = false;
 
   //all inputs have level defined on external hardware, disable internal pullup/down
   pinMode ( ini_block.saba_move_direction_pin , INPUT ) ;
@@ -6136,34 +6189,10 @@ void inputtask ( void * parameter )
 
   while (true)
   {
-    //read ad value while waiting...
-    adcval = 0;
-    for (i = 0; i < adc_oversampling; i++)
-    {
-      adcval = adcval + adc1_get_raw ( ADC1_CHANNEL_0 ) ;
-      vTaskDelay(1);
-    }
-    adcval = adcval / adc_oversampling;
+    check_station_active(station_active);
 
-    if (adcval > search_threshold)
-    {
-      //check if really a station
-      for (i = 0; i < 100; i++) {
-        adcval = adcval + adc1_get_raw ( ADC1_CHANNEL_0 ) ;
-        if (adcval < (search_threshold * 8 / 10))
-        {
-          //noise
-          break;
-        }
-        vTaskDelay(1);
-      }
-      //assume station found
-      Saba_remote_control request;
-      request.cmd = Saba_remote_control_cmd::DIAL_STATION_ACTIVE;
-      request.time = 0;
-      xQueueSend(dialqueue, &request, 0);
 
-    }
+
     //dbgprint ( "adc %d %d ", xTaskGetTickCount(), adcval ) ;
 
 //    auto input = digitalRead(ini_block.saba_search_hold_pin);
@@ -6180,5 +6209,6 @@ void inputtask ( void * parameter )
 //    }
 
 
+    vTaskDelay(5);
   }
 }

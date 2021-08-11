@@ -27,20 +27,23 @@ tonehf = 0
 tonela = 0
 tonelf = 0
 #
-preset = 6
+preset = 1
 # Some preset examples
-preset_00 = 109.206.96.34:8100                       #  0 - NAXI LOVE RADIO, Belgrade, Serbia
-preset_01 = airspectrum.cdnstream1.com:8114/1648_128 #  1 - Easy Hits Florida 128k
-preset_02 = us2.internet-radio.com:8050              #  2 - CLASSIC ROCK MIAMI 256k
-preset_03 = airspectrum.cdnstream1.com:8000/1261_192 #  3 - Magic Oldies Florida
-preset_04 = airspectrum.cdnstream1.com:8008/1604_128 #  4 - Magic 60s Florida 60s Classic Rock
-preset_05 = us1.internet-radio.com:8105              #  5 - Classic Rock Florida - SHE Radio
-preset_06 = icecast.omroep.nl:80/radio1-bb-mp3       #  6 - Radio 1, NL
-preset_07 = 205.164.62.15:10032                      #  7 - 1.FM - GAIA, 64k
-preset_08 = skonto.ls.lv:8002/mp3                    #  8 - Skonto 128k
-preset_09 = 94.23.66.155:8106                        #  9 - *ILR CHILL and GROOVE
-preset_10 = ihr/IHR_IEDM                             # 10 - iHeartRadio IHR_IEDM
-preset_11 = ihr/IHR_TRAN                             # 11 - iHeartRadio IHR_TRAN
+preset_00 = addrad.io/44554bs                                   #  0 - Radio Gong Würzburg
+preset_01 = stream.live.vc.bbcmedia.co.uk/bbc_6music            #  1 - BBC 6 Music
+preset_02 = br-puls-live.cast.addradio.de/br/puls/live/mp3/low  #  2 - BR Puls 
+preset_03 = mp3ad.egofm.c.nmdn.net/egofm_128/livestream.mp3?    #  3 - Ego FM
+preset_04 = sunshinelive.hoerradar.de/sunshinelive-live-mp3-hq  #  4 - Sunshine Live
+preset_05 = media-sov.musicradio.com:80/GoldMP3                 #  5 - Gold UK 
+preset_06 = stream.live.vc.bbcmedia.co.uk/bbc_radio_one         #  6 - BBC 1
+preset_07 = stream.live.vc.bbcmedia.co.uk/bbc_radio_two         #  7 - BBC 2
+preset_08 = mp3ad.egofm.c.nmdn.net/egofmpure_128/livestream.mp3? #  8 - Ego FM Pure
+preset_09 = sunshinelive.hoerradar.de/sunshinelive-house-mp3-hq #  9 - Sunshine Live House
+preset_10 = sunshinelive.hoerradar.de/sunshinelive-classics-mp3-hq # 10 - Sunshine Live Classics 
+preset_11 = airspectrum.cdnstream1.com:8114/1648_128            # 11 - Easy Hits Florida 128k
+preset_12 = airspectrum.cdnstream1.com:8000/1261_192            # 12 - Magic Oldies Florida
+preset_13 = icecast.omroep.nl:80/radio1-bb-mp3                  # 13 - Radio 1, NL
+
 #
 # Clock offset and daylight saving time
 clk_server = pool.ntp.org                            # Time server to be used

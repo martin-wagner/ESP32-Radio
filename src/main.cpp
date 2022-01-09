@@ -163,7 +163,8 @@
 // 19-02-2021, ES: More Oled models.
 // 25-04-2021, ES: Fixed playlist bug.
 // 29-04-2021, ES: Fixed SSD1309 bug, thanks to Juraj Liso.
-
+// 21-06-2021, ES: Display station name if not in metadata
+// 28-06-2021, ES: Convert special characters in station name
 // Define the version number, also used for webserver as Last-Modified header and to
 // check version for update.  The format must be exactly as specified by the HTTP standard!
 #define VERSION     "Mon, 28 Jun 2021 12:40:00 GMT"

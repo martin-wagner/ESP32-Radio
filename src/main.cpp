@@ -207,6 +207,7 @@
 #include <Update.h>
 #include <base64.h>
 #include "sm_dial.h"
+#include "sm_amp.h"
 // Number of entries in the queue
 #define QSIZ 400
 // Debug buffer size
@@ -5921,115 +5922,82 @@ void dialtask ( void * parameter )
 }
 
 //**************************************************************************************************
-//                                     Amp Volume Relay output                                     *
+//                                     Audio Amp State Machine                                     *
 //**************************************************************************************************
-void set_amp_relay(uint8_t up, uint8_t down)
+class Amp_interface_implementation : public amp::Interface
 {
-  if ((up != 0) && (down != 0))
-  {
-    //invalid request
-    set_amp_relay(0, 0);
-    return;
-  }
+  public:
 
-  if (up)
-  {
-    digitalWrite ( ini_block.saba_vol_down_pin , 0 ) ;
-    digitalWrite ( ini_block.saba_vol_up_pin , 1 ) ;
-  }
-  else if (down)
-  {
-    digitalWrite ( ini_block.saba_vol_up_pin , 0 ) ;
-    digitalWrite ( ini_block.saba_vol_down_pin, 1 ) ;
-  }
-  else
-  {
-    digitalWrite ( ini_block.saba_vol_up_pin , 0 ) ;
-    digitalWrite ( ini_block.saba_vol_down_pin, 0 ) ;
-  }
-}
+    virtual void set_amp_relay(uint8_t up, uint8_t down)
+    {
+      if ((up != 0) && (down != 0)) {
+        //invalid request
+        set_amp_relay(0, 0);
+        return;
+      }
+
+      if (up) {
+        digitalWrite(ini_block.saba_vol_down_pin, 0);
+        digitalWrite(ini_block.saba_vol_up_pin, 1);
+      } else if (down) {
+        digitalWrite(ini_block.saba_vol_up_pin, 0);
+        digitalWrite(ini_block.saba_vol_down_pin, 1);
+      } else {
+        digitalWrite(ini_block.saba_vol_up_pin, 0);
+        digitalWrite(ini_block.saba_vol_down_pin, 0);
+      }
+    }
+
+    virtual void set_mute_relay(uint8_t mute)
+    {
+      digitalWrite(ini_block.saba_vol_mute_pin, mute);
+    }
+
+    virtual bool get_mute()
+    {
+      return digitalRead(ini_block.saba_vol_mute_pin);
+    }
+
+    virtual Time_ms get_movement_limit()
+    {
+      return 15000; //pot moves around once in this time
+    }
+
+    virtual Time_ms get_save_decrease()
+    {
+      return (get_movement_limit() / 2); //about half from max
+    }
+};
+Amp_interface_implementation amp_interface_implementation;
+amp::Sm amp_state_machine(amp_interface_implementation);
 
 //**************************************************************************************************
 //                                     Amp Task                                                    *
 //**************************************************************************************************
 // Receives remote control commands, translates them to control the corresponding relays,
-// ensures timeouts. Also handles power on/off
+// ensures timeouts
 //**************************************************************************************************
 void amptask ( void * parameter )
 {
-  static const Time_ms MOVEMENT_LIMIT = 15000; //pot moves around once in this time
   Saba_remote_control request;
   TickType_t wait = portMAX_DELAY;
+  Time_ms delay;
 
   //all relays output push-pull, off
   pinMode ( ini_block.saba_vol_down_pin , OUTPUT ) ;
   pinMode ( ini_block.saba_vol_up_pin , OUTPUT ) ;
   pinMode ( ini_block.saba_vol_mute_pin , OUTPUT ) ;
-//  pinMode ( ini_block.saba_power1_pin , OUTPUT ) ;
-//  pinMode ( ini_block.saba_power2_pin , OUTPUT ) ;
-  digitalWrite ( ini_block.saba_vol_mute_pin , 0 ) ;
-  set_amp_relay(0, 0);
+  amp_interface_implementation.set_mute_relay(0);
+  amp_interface_implementation.set_amp_relay(0, 0);
 
-  while (true)
-  {
+  while (true) {
     auto result = xQueueReceive(ampqueue, &request, wait);
-    if (result == pdTRUE)
-    {
-      //request received
-      if (request.time > MOVEMENT_LIMIT)
-      {
-        request.time = MOVEMENT_LIMIT;
-      }
-
-      switch (request.cmd)
-      {
-        case Saba_remote_control_cmd::AMP_UPVOL:
-          set_amp_relay(1, 0);
-          dbgprint ( "volume up" ) ;
-          break;
-        case Saba_remote_control_cmd::AMP_DOWNVOL:
-          set_amp_relay(0, 1);
-          dbgprint ( "volume down" ) ;
-          break;
-        case Saba_remote_control_cmd::AMP_STOPVOL:
-          set_amp_relay(0, 0);
-          dbgprint ( "volume stop" ) ;
-          break;
-        case Saba_remote_control_cmd::AMP_MUTE: {
-          auto in = digitalRead(ini_block.saba_vol_mute_pin);
-          if (in == true)
-          {
-            digitalWrite ( ini_block.saba_vol_mute_pin , 0 ) ;
-          }
-          else
-          {
-            digitalWrite ( ini_block.saba_vol_mute_pin , 1 ) ;
-          }
-          dbgprint ( "volume mute" ) ;
-          break; }
-        default:
-          break;
-      }
-
-      if (request.time > 0)
-      {
-        wait = pdMS_TO_TICKS(request.time);
-      }
-      else
-      {
-        wait = portMAX_DELAY;
-      }
+    if (result == pdTRUE) {
+      delay = amp_state_machine.cmd(request);
+    } else {
+      delay = amp_state_machine.timer();
     }
-    else
-    {
-      dbgprint ( "reducing amp volume (timer)" ) ;
-      set_amp_relay(0, 1);
-      vTaskDelay(7500);
-      set_amp_relay(0, 0);
-
-      wait = portMAX_DELAY;
-      dbgprint ( "stopping amp pot movement (timer)" ) ;
-    }
+    wait = pdMS_TO_TICKS(delay);
   }
 }
 

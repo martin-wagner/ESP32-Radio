@@ -10,7 +10,7 @@
 
 #include "sm_common.h"
 
-#define SM_DIAL_PRINTING
+//#define SM_DIAL_PRINTING
 
 namespace dial {
 
@@ -302,10 +302,6 @@ class Sm
     Interface &h;
 
 };
-
-
-
-
 
 
 }

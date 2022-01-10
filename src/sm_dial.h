@@ -14,11 +14,14 @@
 
 namespace dial {
 
-// https://stackoverflow.com/questions/14676709/c-code-for-state-machine
-// or https://github.com/hbarcelos/cpp-state-machine
-// but with static state allocation instead of dynamic
-
 class Sm;
+
+enum class State
+{
+  WAITING,
+  MOVING,
+  SEARCHING
+};
 
 class Abstract_state
 {
@@ -26,10 +29,10 @@ class Abstract_state
     Abstract_state(Sm *sm) : sm(sm) {};
     virtual ~Abstract_state() {};
 
-    virtual Time_ms cmd(Saba_remote_control &cmd) = 0;
-    virtual Time_ms input(Saba_remote_control input) = 0;
-    virtual Time_ms tick() = 0;
+    virtual Time_ms cmd(Saba_remote_control &request) = 0;
     virtual void timer();
+
+    virtual State get_state() = 0;
 
   protected:
 
@@ -53,10 +56,10 @@ class State_wait : public Abstract_state
     State_wait(Sm *sm) : Abstract_state(sm) {};
     virtual ~State_wait() {};
 
-    virtual Time_ms cmd(Saba_remote_control &cmd);
-    virtual Time_ms input(Saba_remote_control input) { return -1; };
-    virtual Time_ms tick() { return -1; };
+    virtual Time_ms cmd(Saba_remote_control &request);
     virtual void timer() {};
+
+    virtual State get_state() { return State::WAITING; };
 
   protected:
 
@@ -70,9 +73,9 @@ class State_move : public Abstract_state
     State_move(Sm *sm) : Abstract_state(sm) {};
     virtual ~State_move() {};
 
-    virtual Time_ms cmd(Saba_remote_control &cmd);
-    virtual Time_ms input(Saba_remote_control input) { return -1; };
-    virtual Time_ms tick() { return -1; };
+    virtual Time_ms cmd(Saba_remote_control &request);
+
+    virtual State get_state() { return State::MOVING; };
 
   protected:
 
@@ -155,10 +158,9 @@ class State_search : public Abstract_state
     State_search(Sm *sm) : Abstract_state(sm) {};
     virtual ~State_search() {};
 
-    virtual Time_ms cmd(Saba_remote_control &cmd);
-    virtual Time_ms input(Saba_remote_control input) { return -1; };
-    virtual Time_ms tick() { return -1; };
-    virtual void timer() {};
+    virtual Time_ms cmd(Saba_remote_control &request);
+
+    virtual State get_state() { return State::SEARCHING; };
 
 };
 
@@ -168,7 +170,7 @@ class State_search_leave : public State_search
     State_search_leave(Sm *sm) : State_search(sm) {};
     virtual ~State_search_leave() {};
 
-    virtual Time_ms cmd(Saba_remote_control &cmd);
+    virtual Time_ms cmd(Saba_remote_control &request);
 
   protected:
 
@@ -214,7 +216,7 @@ class State_search_next : public State_search
     State_search_next(Sm *sm) : State_search(sm) {};
     virtual ~State_search_next() {};
 
-    virtual Time_ms cmd(Saba_remote_control &cmd);
+    virtual Time_ms cmd(Saba_remote_control &request);
 
   protected:
 
@@ -235,6 +237,11 @@ class Interface
      * this is the state machine output
      */
     virtual void set_dial_relay(uint8_t left, uint8_t right, uint8_t fast) = 0;
+
+    /**
+     * time for moving dial pointer from one end to the other
+     */
+    virtual Time_ms get_movement_limit() = 0;
 
 };
 
@@ -262,30 +269,23 @@ class Sm
     /**
      * handles user command
      *
-     * @param cmd cmd
+     * @param request cmd
      * @return call timer() after delay
      */
-    Time_ms cmd(Saba_remote_control &cmd);
-
-    /**
-     * handles input signal
-     *
-     * @param input input signal
-     * @return call timer() after delay
-     */
-    Time_ms input(Saba_remote_control input);
-
-    /**
-     * handles tick
-     *
-     * @return call timer() after delay
-     */
-    Time_ms tick();
+    Time_ms cmd(Saba_remote_control &request);
 
     /**
      * timer elapsed
      */
     void timer();
+
+    /**
+     * get current machine state
+     *
+     * @return state
+     */
+    State get_state();
+
 
   private:
 

@@ -37,28 +37,28 @@ void Abstract_state::stop()
   dbgprint ( "stopping dial movement" ) ;
 }
 
-Time_ms State_wait::cmd(Saba_remote_control &cmd)
+Time_ms State_wait::cmd(Saba_remote_control &request)
 {
-  switch (cmd.cmd)
+  switch (request.cmd)
   {
     case Saba_remote_control_cmd::DIAL_FASTMOVELEFT:
       set_state(&sm->move_fast_left);
-      return cmd.time;
+      return request.time;
     case Saba_remote_control_cmd::DIAL_FASTMOVERIGHT:
       set_state(&sm->move_fast_right);
-      return cmd.time;
+      return request.time;
     case Saba_remote_control_cmd::DIAL_MOVELEFT:
       set_state(&sm->move_slow_left);
-      return cmd.time;
+      return request.time;
     case Saba_remote_control_cmd::DIAL_MOVERIGHT:
       set_state(&sm->move_slow_right);
-      return cmd.time;
+      return request.time;
     case Saba_remote_control_cmd::DIAL_SEARCHLEFT:
       set_state(&sm->search_inactive_left);
-      return cmd.time;
+      return request.time;
     case Saba_remote_control_cmd::DIAL_SEARCHRIGHT:
       set_state(&sm->search_inactive_right);
-      return cmd.time;
+      return request.time;
     case Saba_remote_control_cmd::DIAL_STATION_INACTIVE:
       break;
     case Saba_remote_control_cmd::DIAL_STATION_ACTIVE:
@@ -78,13 +78,19 @@ const char* State_wait::get_state_name()
   return c;
 }
 
-Time_ms State_move::cmd(Saba_remote_control &cmd)
+Time_ms State_move::cmd(Saba_remote_control &request)
 {
-  switch (cmd.cmd)
+  switch (request.cmd)
   {
     case Saba_remote_control_cmd::DIAL_STOP:
       stop();
       break;
+    case Saba_remote_control_cmd::DIAL_SEARCHLEFT:
+      set_state(&sm->search_inactive_left);
+      return request.time;
+    case Saba_remote_control_cmd::DIAL_SEARCHRIGHT:
+      set_state(&sm->search_inactive_right);
+      return request.time;
     default:
       break;
   }
@@ -145,9 +151,9 @@ void State_move_fast_right::set_dial_relay()
   dbgprint ( "fast moving dial to the right" ) ;
 }
 
-Time_ms State_search::cmd(Saba_remote_control &cmd)
+Time_ms State_search::cmd(Saba_remote_control &request)
 {
-  switch (cmd.cmd)
+  switch (request.cmd)
   {
     case Saba_remote_control_cmd::DIAL_STOP:
       stop();
@@ -158,16 +164,16 @@ Time_ms State_search::cmd(Saba_remote_control &cmd)
   return -1;
 }
 
-Time_ms State_search_leave::cmd(Saba_remote_control &cmd)
+Time_ms State_search_leave::cmd(Saba_remote_control &request)
 {
-  switch (cmd.cmd)
+  switch (request.cmd)
   {
     case Saba_remote_control_cmd::DIAL_STATION_INACTIVE:
       set_state(&sm->search_active);
-      return 30000; //todo WAIT_INACTIVE
+      return sm->h.get_movement_limit();
     default:
       //delegate to base class
-      return State_search::cmd(cmd);
+      return State_search::cmd(request);
   }
   return -1;
 }
@@ -202,18 +208,17 @@ void State_search_leave_right::set_dial_relay()
   dbgprint ( "searching for station to the right" ) ;
 }
 
-Time_ms State_search_next::cmd(Saba_remote_control &cmd)
+Time_ms State_search_next::cmd(Saba_remote_control &request)
 {
-  switch (cmd.cmd)
+  switch (request.cmd)
   {
     case Saba_remote_control_cmd::DIAL_STATION_ACTIVE:
       dbgprint ( "station found!" ) ;
       stop();
-      set_state(&sm->wait);
       break;
     default:
       //delegate to base class
-      return State_search::cmd(cmd);
+      return State_search::cmd(request);
   }
   return -1;
 }
@@ -230,24 +235,24 @@ Sm::Sm(Interface &h) :
 {
 }
 
-Time_ms Sm::cmd(Saba_remote_control &cmd)
+Time_ms Sm::cmd(Saba_remote_control &request)
 {
-  return state->cmd(cmd);
-}
+  if (request.time > h.get_movement_limit())
+  {
+    request.time = h.get_movement_limit();
+  }
 
-Time_ms Sm::input(Saba_remote_control input)
-{
-  return state->input(input);
-}
-
-Time_ms Sm::tick()
-{
-  return state->tick();
+  return state->cmd(request);
 }
 
 void Sm::timer()
 {
   state->timer();
+}
+
+State Sm::get_state()
+{
+  return state->get_state();
 }
 
 }

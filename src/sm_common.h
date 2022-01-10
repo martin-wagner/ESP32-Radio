@@ -3,6 +3,12 @@
  *
  *  Created on: Jan 9, 2022
  *      Author: martin
+ *
+ *
+ * https://stackoverflow.com/questions/14676709/c-code-for-state-machine
+ * or https://github.com/hbarcelos/cpp-state-machine
+ * but with static state allocation instead of dynamic
+ *
  */
 
 #ifndef SRC_SM_COMMON_H_
@@ -45,7 +51,7 @@ enum class Saba_remote_control_cmd {
 struct Saba_remote_control {
   Saba_remote_control_cmd cmd;
   Time_ms time;
-};                        // Mute/unmute the audio amp (toggle)
+};
 
 //Saba front inputs Stuff
 enum class Saba_input {

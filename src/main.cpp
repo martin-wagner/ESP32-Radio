@@ -206,6 +206,7 @@
 #include <driver/adc.h>
 #include <Update.h>
 #include <base64.h>
+#include "sm_dial.h"
 // Number of entries in the queue
 #define QSIZ 400
 // Debug buffer size
@@ -382,59 +383,6 @@ struct keyname_t                                      // For keys in NVS
   char      Key[16] ;                                 // Max length is 15 plus delimeter
 } ;
 
-//arduino.h "#define FALLING xyz". WTF???
-#undef FALLING
-#undef RISING
-
-enum class Edge {
-  NONE,
-  FALLING,
-  RISING,
-};
-
-using Time_ms = uint32_t;   // time in milliseconds
-
-// Saba Remote Control Stuff
-enum class Saba_remote_control_cmd {
-  DIAL_FASTMOVELEFT,        // Fast move dial pointer
-  DIAL_FASTMOVERIGHT,
-  DIAL_MOVELEFT,            // Move dial pointer
-  DIAL_MOVERIGHT,
-  DIAL_SEARCHLEFT,          // Move dial pointer, then search for station
-  DIAL_SEARCHRIGHT,
-  DIAL_STOP,                // Stop moving dial pointer
-  DIAL_STATION_ACTIVE,      // Radio station now active at current dial position
-  DIAL_STATION_INACTIVE,    // Radio station not active at current dial position
-  AMP_UPVOL,                // Rotate volume knob to increase current volume
-  AMP_DOWNVOL,              // Rotate volume knob to decrease current volume
-  AMP_STOPVOL,              // Stop rotating knob
-  AMP_MUTE,                 // Mute/unmute the audio amp (toggle)
-};
-
-struct Saba_remote_control {
-  Saba_remote_control_cmd cmd;
-  Time_ms time;
-};                        // Mute/unmute the audio amp (toggle)
-
-//Saba front inputs Stuff
-enum class Saba_input {
-  FAST_LEFT,
-  LEFT,
-  NONE,
-  RIGHT,
-  FAST_RIGHT,
-};
-
-struct sabapin_struct
-{
-  int8_t         gpio ;                                  // Pin number
-  uint32_t       scan_time;                              // for debouncing
-
-  bool           cur ;                                   // Current state, true = HIGH, false = LOW
-
-  Edge           edge;                                   // Current edge
-  Edge           seen;                                   // Edge seen previously. Clear by writing "NONE"
-};
 sabapin_struct input_move_slow;
 sabapin_struct input_move_fast;
 sabapin_struct input_direction;
@@ -1237,7 +1185,7 @@ VS1053* vs1053player ;
  #include "oled.h"                                       // For OLED I2C SH1106 64x128 display
 #endif
 #ifdef LCD1602I2C
- #include "oled.h.h"                                     // For LCD 1602 display (I2C)
+  #include "LCD1602.h"                                     // For LCD 1602 display (I2C)
 #endif
 #ifdef LCD2004I2C
  #include "LCD2004.h"                                    // For LCD 2004 display (I2C)
@@ -5908,35 +5856,40 @@ void spftask ( void * parameter )
 }
 
 //**************************************************************************************************
-//                                     Dial Relay output                                           *
+//                                     Dial State Machine                                          *
 //**************************************************************************************************
-void set_dial_relay(uint8_t left, uint8_t right, uint8_t fast)
+class Dial_interface_implementation : public dial::Interface
 {
-  if ((left != 0) && (right != 0))
-  {
-    //invalid request
-    set_dial_relay(0, 0, 0);
-    return;
-  }
+  public:
 
-  digitalWrite ( ini_block.saba_move_fast_pin , fast ) ;
+    virtual void set_dial_relay(uint8_t left, uint8_t right, uint8_t fast)
+    {
+      if ((left != 0) && (right != 0)) {
+        //invalid request
+        set_dial_relay(0, 0, 0);
+        return;
+      }
 
-  if (left)
-  {
-    digitalWrite ( ini_block.saba_move_right_pin , 0 ) ;
-    digitalWrite ( ini_block.saba_move_left_pin , 1 ) ;
-  }
-  else if (right)
-  {
-    digitalWrite ( ini_block.saba_move_left_pin , 0 ) ;
-    digitalWrite ( ini_block.saba_move_right_pin , 1 ) ;
-  }
-  else
-  {
-    digitalWrite ( ini_block.saba_move_right_pin , 0 ) ;
-    digitalWrite ( ini_block.saba_move_left_pin , 0 ) ;
-  }
-}
+      digitalWrite(ini_block.saba_move_fast_pin, fast);
+
+      if (left) {
+        digitalWrite(ini_block.saba_move_right_pin, 0);
+        digitalWrite(ini_block.saba_move_left_pin, 1);
+      } else if (right) {
+        digitalWrite(ini_block.saba_move_left_pin, 0);
+        digitalWrite(ini_block.saba_move_right_pin, 1);
+      } else {
+        digitalWrite(ini_block.saba_move_right_pin, 0);
+        digitalWrite(ini_block.saba_move_left_pin, 0);
+      }
+    }
+    virtual Time_ms get_movement_limit()
+    {
+      return 30000; //dial moves from either end to the other within this time
+    }
+};
+Dial_interface_implementation dial_interface_implementation;
+dial::Sm dial_state_machine(dial_interface_implementation);
 
 //**************************************************************************************************
 //                                     Dial Task                                                   *
@@ -5946,114 +5899,24 @@ void set_dial_relay(uint8_t left, uint8_t right, uint8_t fast)
 //**************************************************************************************************
 void dialtask ( void * parameter )
 {
-  static const Time_ms MOVEMENT_LIMIT = 30000; //dial moves from either end to the other within this time
   Saba_remote_control request;
   TickType_t wait = portMAX_DELAY;
-  enum {  //search state machine
-    NO,
-    WAIT_INACTIVE,
-    WAIT_ACTIVE,
-  } searching = NO;
 
   //all relays output push-pull, off
   pinMode ( ini_block.saba_move_fast_pin , OUTPUT ) ;
   pinMode ( ini_block.saba_move_left_pin , OUTPUT ) ;
   pinMode ( ini_block.saba_move_right_pin , OUTPUT ) ;
-  set_dial_relay(0, 0, 0);
+  dial_interface_implementation.set_dial_relay(0, 0, 0);
 
-  while (true)
-  {
+  while (true) {
     auto result = xQueueReceive(dialqueue, &request, wait);
     if (result == pdTRUE) {
-      //request received
-      if (request.time > MOVEMENT_LIMIT)
-      {
-        request.time = MOVEMENT_LIMIT;
-      }
-
-      switch (request.cmd)
-      {
-        case Saba_remote_control_cmd::DIAL_FASTMOVELEFT:
-          searching = NO;
-          set_dial_relay(1, 0, 1);
-          dbgprint ( "fast moving dial to the left" ) ;
-          break;
-        case Saba_remote_control_cmd::DIAL_FASTMOVERIGHT:
-          searching = NO;
-          set_dial_relay(0, 1, 1);
-          dbgprint ( "fast moving dial to the right" ) ;
-          break;
-        case Saba_remote_control_cmd::DIAL_MOVELEFT:
-          searching = NO;
-          set_dial_relay(1, 0, 0);
-          dbgprint ( "moving dial to the left" ) ;
-          break;
-        case Saba_remote_control_cmd::DIAL_MOVERIGHT:
-          searching = NO;
-          set_dial_relay(0, 1, 0);
-          dbgprint ( "moving dial to the right" ) ;
-          break;
-        case Saba_remote_control_cmd::DIAL_SEARCHLEFT:
-          //start station search:
-          //- slow motor movement
-          //- wait set time (allows leaving current station)
-          //- wait until event "gone"
-          //- wait until event "found"
-          searching = WAIT_INACTIVE;
-          set_dial_relay(1, 0, 0);
-          vTaskDelay(pdMS_TO_TICKS(request.time));
-          request.time = MOVEMENT_LIMIT;
-          dbgprint ( "searching for station to the left" ) ;
-          break;
-        case Saba_remote_control_cmd::DIAL_SEARCHRIGHT:
-          searching = WAIT_INACTIVE;
-          set_dial_relay(0, 1, 0);
-          vTaskDelay(pdMS_TO_TICKS(request.time));
-          request.time = MOVEMENT_LIMIT;
-          dbgprint ( "searching for station to the right" ) ;
-          break;
-        case Saba_remote_control_cmd::DIAL_STATION_INACTIVE:
-          if (searching == WAIT_INACTIVE) {
-            searching = WAIT_ACTIVE;
-          }
-          break;
-        case Saba_remote_control_cmd::DIAL_STATION_ACTIVE:
-          //use station active event only when searching for one
-          if (searching == WAIT_ACTIVE)
-          {
-            //stop, hardware auto-tuning will do the fine adjust by itself
-            set_dial_relay(0, 0, 0);
-            dbgprint ( "station found!" ) ;
-          }
-          searching = NO;
-          break;
-        case Saba_remote_control_cmd::DIAL_STOP:
-        default:
-          searching = NO;
-          set_dial_relay(0, 0, 0);
-          dbgprint ( "stopping dial movement" ) ;
-          break;
-      }
-
-      if (request.time > 0)
-      {
-        wait = pdMS_TO_TICKS(request.time);
-      }
-      else
-      {
-        wait = portMAX_DELAY;
-      }
-    }
-    else
-    {
-      //timeout
-      set_dial_relay(0, 0, 0);
-
-      searching = NO;
+      auto delay = dial_state_machine.cmd(request);
+      wait = pdMS_TO_TICKS(delay);
+    } else {
+      dial_state_machine.timer();
       wait = portMAX_DELAY;
-      dbgprint ( "stopping dial movement (timer)" ) ;
     }
-
   }
 }
 

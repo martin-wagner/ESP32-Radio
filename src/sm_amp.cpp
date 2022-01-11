@@ -155,12 +155,20 @@ Time_ms Sm::cmd(Saba_remote_control &request)
     request.time = h.get_movement_limit();
   }
 
-  return state->cmd(request);
+  auto timeout = state->cmd(request);
+  if (timeout < 0) {
+    timeout = h.get_movement_limit();
+  }
+  return timeout;
 }
 
 Time_ms Sm::timer()
 {
-  return state->timer();
+  auto timeout = state->timer();
+  if (timeout < 0) {
+    timeout = h.get_movement_limit();
+  }
+  return timeout;
 }
 
 State Sm::get_state()

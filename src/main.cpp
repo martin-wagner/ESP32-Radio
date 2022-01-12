@@ -208,6 +208,7 @@
 #include <base64.h>
 #include "sm_dial.h"
 #include "sm_amp.h"
+#include "sm_station.h"
 // Number of entries in the queue
 #define QSIZ 400
 // Debug buffer size
@@ -6002,55 +6003,64 @@ void amptask ( void * parameter )
 }
 
 //**************************************************************************************************
-//                           check signal strength / search hold coil input                        *
+//                             Signal strength / station active State Machine                      *
 //**************************************************************************************************
-void check_station_active(bool &station_active)
+class Station_interface_implementation : public station::Interface
 {
-  static const uint32_t search_active_threshold = 2500; //max. 4095 @ 3.9V
-  static const uint32_t search_inactive_threshold = 2000; //max. 4095 @ 3.9V
-  static const Time_ms debounce = 25; //debouncing timer
-  uint32_t adcval;
+  public:
 
-  //read ad value
-  adcval = adc1_get_raw ( ADC1_CHANNEL_0 ) ;
-
-  if ((adcval > search_active_threshold) && ! station_active)
-  {
-    //debounce / noise filter
-    vTaskDelay(pdMS_TO_TICKS(debounce));
-    adcval = adc1_get_raw ( ADC1_CHANNEL_0 ) ;
-    if (adcval < search_active_threshold)
+    virtual float read_analog_value()
     {
-      return;
+      float value;
+      //auto start = micros();
+      auto adcval = adc1_get_raw ( ADC1_CHANNEL_0 ) ;
+      //auto end = micros();
+      //dbgprint ( "adc1 sample time %d ns", end - start ) ; //normally <100ns
+
+      value = (float)adcval * (100.0 / 4095.0); //max. 4095 @ 3.9V -> 0 ... 100%
+      //dbgprint ( "adc1 value %f %%", value ) ;
+      return value;
     }
 
-    //station found
-    Saba_remote_control request;
-    request.cmd = Saba_remote_control_cmd::DIAL_STATION_ACTIVE;
-    request.time = 0;
-    xQueueSend(dialqueue, &request, 0);
-    station_active = true;
-    dbgprint ( "station active" ) ;
-  }
-  else if  ((adcval < search_inactive_threshold) && station_active)
-  {
-    //debounce / noise filter
-    vTaskDelay(pdMS_TO_TICKS(debounce));
-    adcval = adc1_get_raw ( ADC1_CHANNEL_0 ) ;
-    if (adcval > search_inactive_threshold)
+    virtual void get_threshold(float &active, float &inactive)
     {
-      return;
+      //todo user parameter / fiddle factor
+      //depends
+      //parameters of opto coupler
+      //radio signal conditioning
+      //antenna signal level *not signal quality*
+      active = 75.0; // %
+      inactive = 25.0; // %
     }
 
-    //station gone
-    Saba_remote_control request;
-    request.cmd = Saba_remote_control_cmd::DIAL_STATION_INACTIVE;
-    request.time = 0;
-    xQueueSend(dialqueue, &request, 0);
-    station_active = false;
-    dbgprint ( "station gone" ) ;
-  }
-}
+    virtual Time_ms get_window_size()
+    {
+      return 6; //window time depends on state machine calling interval
+    }
+
+    virtual void event_active()
+    {
+      Saba_remote_control request;
+      request.cmd = Saba_remote_control_cmd::DIAL_STATION_ACTIVE;
+      request.time = 0;
+      xQueueSend(dialqueue, &request, 0);
+    }
+
+    virtual void event_inactive()
+    {
+      Saba_remote_control request;
+      request.cmd = Saba_remote_control_cmd::DIAL_STATION_INACTIVE;
+      request.time = 0;
+      xQueueSend(dialqueue, &request, 0);
+    }
+
+    virtual void event_noisy()
+    {
+    }
+
+};
+Station_interface_implementation station_interface_implementation;
+station::Sm station_state_machine(station_interface_implementation);
 
 //**************************************************************************************************
 //                           read / debounce a single input from rocker switch                     *
@@ -6167,9 +6177,12 @@ void web_radio_control()
 //**************************************************************************************************
 //                                     Input Task                                                  *
 //**************************************************************************************************
+// runs with constant <t_cycle> interval
+//**************************************************************************************************
 void inputtask ( void * parameter )
 {
-  bool station_active = false;
+  Time_ms t_cycle = 5;
+  TickType_t xLastWakeTime; //https://www.freertos.org/vtaskdelayuntil.html
 
   //all inputs have level defined on external hardware, disable internal pullup/down
   pinMode ( ini_block.saba_move_direction_pin , INPUT ) ;
@@ -6180,21 +6193,20 @@ void inputtask ( void * parameter )
   gpio_set_pull_mode(static_cast<gpio_num_t>(ini_block.saba_move_is_slow_pin), gpio_pull_mode_t::GPIO_FLOATING);
   pinMode ( ini_block.saba_search_hold_pin , INPUT ) ;
   gpio_set_pull_mode(static_cast<gpio_num_t>(ini_block.saba_search_hold_pin), gpio_pull_mode_t::GPIO_FLOATING);
-//  pinMode ( ini_block.saba_power_fb_pin , INPUT ) ;
-//  gpio_set_pull_mode(static_cast<gpio_num_t>(ini_block.saba_power_fb_pin), gpio_pull_mode_t::GPIO_FLOATING);
   input_direction.gpio = ini_block.saba_move_direction_pin;
   input_move_slow.gpio = ini_block.saba_move_is_slow_pin;
   input_move_fast.gpio = ini_block.saba_move_is_fast_pin;
 
-
+  xLastWakeTime = xTaskGetTickCount();
   while (true)
   {
     //check signal strength feedback
-    check_station_active(station_active);
+    station_state_machine.tick();
 
     //check web radio control by front rocker switch
     web_radio_control();
 
-    vTaskDelay(5);
+    // Wait for the next cycle.
+    vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(t_cycle));
   }
 }

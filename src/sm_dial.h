@@ -2,7 +2,16 @@
  * sm_dial.h
  *
  *  Created on: Jan 9, 2022
- *      Author: martin
+ *      Author: Martin Wagner
+ *
+ *  This state machine controls dial pointer movement by setting three digital ouputs
+ *  - move left
+ *  - move right
+ *  - fast movement
+ *  Using those and combinations allow for general movement and station searching.
+ *
+ *  Remark: Station searching requries external station (in)active event generation.
+ *
  */
 
 #ifndef SRC_SM_DIAL_H_

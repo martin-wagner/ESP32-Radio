@@ -2,7 +2,16 @@
  * sm_amp.h
  *
  *  Created on: Jan 10, 2022
- *      Author: martin
+ *      Author: Martin Wagner
+ *
+ *  This state machine controls audio amp potentiometer rotation and audio muting by
+ *  setting three digital outputs
+ *  - rotate pot clockwise (volume up)
+ *  - rotate pot counter-clockwise (volume down)
+ *  - enable muting
+ *
+ *  In the case of "volume up" not being terminated by "stop", the volume is automatically
+ *  decreased to a save level after timeout.
  */
 
 #ifndef SRC_SM_AMP_H_

@@ -24,31 +24,20 @@ void Abstract_state::set_state(Abstract_state *state)
   state->init_state();
 }
 
+void Abstract_state::init_state()
+{
+  sm->h.get_threshold(active_threshold, inactive_threshold);
+}
+
 bool Abstract_state::consider_active()
 {
-  uint32_t active_count = 0;
-  uint32_t i;
-  float active_threshold;
-  float inactive_threshold;
-
   if ( ! sm->is_history_valid()) {
     return false;
   }
-  sm->h.get_threshold(active_threshold, inactive_threshold);
 
-  //calc stats
-  //for (const auto &s : *sm->history) {
-  for (i = 0; i < sm->history->size(); i++) {
-    const auto &s = (*sm->history)[i];
+  auto av = get_average();
 
-    if (s > active_threshold) {
-      active_count ++;
-    }
-  }
-
-  //evaluate result
-  if (active_count > (uint32_t)((float)sm->history->size() * 0.9)) {
-    dbgprint ( "station active" ) ;
+  if (av >= active_threshold) {
     return true;
   }
   return false;
@@ -56,80 +45,42 @@ bool Abstract_state::consider_active()
 
 bool Abstract_state::consider_inactive()
 {
-  uint32_t inactive_count = 0;
-  uint32_t noise_count = 0;
-  uint32_t i;
-  float active_threshold;
-  float inactive_threshold;
-
   if ( ! sm->is_history_valid()) {
     return true;
   }
-  sm->h.get_threshold(active_threshold, inactive_threshold);
 
-  //calc stats
-  for (i = 0; i < sm->history->size(); i++) {
-    const auto &s = (*sm->history)[i];
+  auto av = get_average();
 
-    if (s < inactive_threshold) {
-      inactive_count ++;
-    } else if (s > active_threshold) {
-    } else {
-      noise_count ++;
-    }
-  }
-
-  //evaluate result
-  if (inactive_count > (sm->history->size() / 4)) {
-    dbgprint ( "station gone (1)" ) ;
+  if (av <= inactive_threshold) {
     return true;
   }
-  if ((inactive_count > (sm->history->size() / 8)) &&
-      (noise_count > 0)) {
-    dbgprint ( "station gone (2)" ) ;
-    return true;
-  }
-
   return false;
 }
 
 bool Abstract_state::consider_noisy()
 {
-  uint32_t active_count = 0;
-  uint32_t inactive_count = 0;
-  uint32_t noise_count = 0;
-  uint32_t i;
-  float active_threshold;
-  float inactive_threshold;
-
   if ( ! sm->is_history_valid()) {
     return false;
   }
-  sm->h.get_threshold(active_threshold, inactive_threshold);
 
-  //calc stats
-  for (i = 0; i < sm->history->size(); i++) {
-    const auto &s = (*sm->history)[i];
+  auto av = get_average();
 
-    if (s < inactive_threshold) {
-      inactive_count ++;
-    } else if (s > active_threshold) {
-      active_count ++;
-    } else {
-      noise_count ++;
-    }
-  }
-
-  //evaluate result
-  if (noise_count > (sm->history->size() / 2)) {
-    return true;
-  }
-  if ((noise_count > (sm->history->size() / 4)) &&
-      (active_count > 0) &&
-      (inactive_count > 0)) {
+  if ((av < active_threshold) && (av > inactive_threshold)) {
     return true;
   }
   return false;
+}
+
+float Abstract_state::get_average()
+{
+  float av;
+
+  av = 0;
+  for (const auto &s : *sm->history) {
+    av = av + s;
+  }
+  av = av / sm->history->size();
+  return av;
 }
 
 void State_inactive::tick()

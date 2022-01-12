@@ -47,7 +47,7 @@ class Abstract_state
   protected:
 
     void set_state(Abstract_state *state);
-    virtual void init_state() {};
+    virtual void init_state();
     virtual const char *get_state_name() = 0;
 
   protected:
@@ -55,6 +55,13 @@ class Abstract_state
     bool consider_active();
     bool consider_inactive();
     bool consider_noisy();
+
+  private:
+
+    float active_threshold = 100.0;
+    float inactive_threshold = 0.0;
+
+    float get_average();
 
 };
 

@@ -12,7 +12,7 @@
 				</extensions>
 			</storageModule>
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-				<configuration artifactName="${ProjName}" buildProperties="" description="" id="io.sloeber.core.toolChain.release.503349128" name="Release" optionalBuildProperties="" parent="org.eclipse.cdt.build.core.emptycfg">
+				<configuration artifactName="${ProjName}" buildProperties="" description="" id="io.sloeber.core.toolChain.release.503349128" name="Release" optionalBuildProperties="org.eclipse.cdt.docker.launcher.containerbuild.property.selectedvolumes=,org.eclipse.cdt.docker.launcher.containerbuild.property.volumes=" parent="org.eclipse.cdt.build.core.emptycfg">
 					<folderInfo id="io.sloeber.core.toolChain.release.503349128.1198985815" name="/" resourcePath="">
 						<toolChain id="io.sloeber.core.toolChain.release.1943811674" name="Arduino Toolchain (Sloeber edition)" superClass="io.sloeber.core.toolChain.release">
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="io.sloeber.targetplatform.1066648701" name="Arduino Target" osList="all" superClass="io.sloeber.targetplatform"/>
@@ -30,6 +30,10 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ESP32_Radio/libraries/SPI/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ESP32_Radio/libraries/Update/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ESP32_Radio/libraries/WiFi/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ESP32_Radio/libraries/gtest}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ESP32_Radio/build/test/_deps/googletest-src/googletest/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ESP32_Radio/build/test/_deps/googletest-src/googlemock/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ESP32_Radio/libraries/Ucglib/src}&quot;"/>
 								</option>
 								<inputType id="io.sloeber.compiler.cpp.sketch.input.787126718" name="CPP source files" superClass="io.sloeber.compiler.cpp.sketch.input"/>
 							</tool>
@@ -46,6 +50,10 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ESP32_Radio/libraries/SPI/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ESP32_Radio/libraries/Update/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ESP32_Radio/libraries/WiFi/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ESP32_Radio/libraries/gtest}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ESP32_Radio/build/test/_deps/googletest-src/googletest/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ESP32_Radio/build/test/_deps/googletest-src/googlemock/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ESP32_Radio/libraries/Ucglib/src}&quot;"/>
 								</option>
 								<inputType id="io.sloeber.compiler.c.sketch.input.1619760513" name="C Source Files" superClass="io.sloeber.compiler.c.sketch.input"/>
 							</tool>
@@ -62,6 +70,10 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ESP32_Radio/libraries/SPI/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ESP32_Radio/libraries/Update/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ESP32_Radio/libraries/WiFi/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ESP32_Radio/libraries/gtest}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ESP32_Radio/build/test/_deps/googletest-src/googletest/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ESP32_Radio/build/test/_deps/googletest-src/googlemock/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ESP32_Radio/libraries/Ucglib/src}&quot;"/>
 								</option>
 								<inputType id="io.sloeber.compiler.S.sketch.input.1937966392" name="Assembly source files" superClass="io.sloeber.compiler.S.sketch.input"/>
 							</tool>
@@ -72,7 +84,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="libraries/?*/**/?xamples/**|libraries/?*/**/?xtras/**|libraries/?*/**/test*/**|libraries/?*/**/third-party/**|libraries/**/._*|libraries/?*/utility/*/*|tools/*" flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name=""/>
+						<entry excluding="libraries/gtest/gtest|libraries/?*/**/?xamples/**|libraries/?*/**/?xtras/**|libraries/?*/**/test*/**|libraries/?*/**/third-party/**|libraries/**/._*|libraries/?*/utility/*/*|tools/*" flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>

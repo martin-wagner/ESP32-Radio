@@ -38,6 +38,7 @@ bool Abstract_state::consider_active()
   auto av = get_average();
 
   if (av >= active_threshold) {
+    dbgprint ( "station active" ) ;
     return true;
   }
   return false;
@@ -52,6 +53,7 @@ bool Abstract_state::consider_inactive()
   auto av = get_average();
 
   if (av <= inactive_threshold) {
+    dbgprint ( "station gone" ) ;
     return true;
   }
   return false;

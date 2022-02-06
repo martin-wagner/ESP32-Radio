@@ -385,10 +385,6 @@ struct keyname_t                                      // For keys in NVS
   char      Key[16] ;                                 // Max length is 15 plus delimeter
 } ;
 
-sabapin_struct input_move_slow;
-sabapin_struct input_move_fast;
-sabapin_struct input_direction;
-
 //**************************************************************************************************
 // Global data section.                                                                            *
 //**************************************************************************************************
@@ -6033,7 +6029,7 @@ class Station_interface_implementation : public station::Interface
       inactive = 25.0; // %
     }
 
-    virtual Time_ms get_window_size()
+    virtual uint32_t get_window_size()
     {
       return 6; //window time depends on state machine calling interval
     }
@@ -6061,152 +6057,154 @@ class Station_interface_implementation : public station::Interface
 };
 Station_interface_implementation station_interface_implementation;
 station::Sm station_state_machine(station_interface_implementation);
-
-//**************************************************************************************************
-//                           read / debounce a single input from rocker switch                     *
-//**************************************************************************************************
-void read_saba_input(sabapin_struct &input)
-{
-  bool level ;                                           // Input level
-
-  if ( ( millis() - input.scan_time ) < 100 )             // Debounce
-  {
-    input.edge = Edge::NONE;
-    return ;
-  }
-  input.scan_time = millis() ;                            // debounce timer over
-
-  level = ( digitalRead ( input.gpio ) == HIGH ) ;        // Sample the pin
-  if ( level != input.cur )                               // Change seen?
-  {
-    if (level == false)                                   // new state false -> falling edge
-    {
-      input.edge = Edge::FALLING;
-    }
-    else                                                  // new state !false -> rising edge
-    {
-      input.edge = Edge::RISING;
-    }
-    input.seen = input.edge;
-    input.cur = level;
-  }
-  else
-  {
-    input.edge = Edge::NONE;
-  }
-}
-
-//**************************************************************************************************
-//                           read rocker switch input                                              *
-//**************************************************************************************************
-// We have three digital inputs for the switch
-// - direction
-// - (slow) movement
-// - fast movement.
-// By mechanics, "movement" is active as soon as the rocker switch is moved in any direction. Therefore,
-// any input while "movement" is inactive can be discarded as noise. "fast movement" can be activated
-// in addition to "movement". Circuit design makes direction input default "right". Any event on this
-// input means switch has been pushed to the left.
-//**************************************************************************************************
-Saba_input scan_saba_input()
-{
-  Saba_input retval = Saba_input::NONE;
-
-  read_saba_input(input_move_slow);
-  read_saba_input(input_move_fast);
-  read_saba_input(input_direction);
-
-  if (input_move_slow.edge == Edge::FALLING)
-  {
-    if (input_move_fast.seen == Edge::FALLING)
-    {
-      if (input_direction.seen != Edge::NONE) {
-        dbgprint ( "input fast left detected" ) ;
-        retval = Saba_input::FAST_LEFT;
-      } else {
-        dbgprint ( "input fast right detected" ) ;
-        retval = Saba_input::FAST_RIGHT;
-      }
-    } else {
-      if (input_direction.seen != Edge::NONE) {
-        dbgprint ( "input left detected" ) ;
-        retval = Saba_input::LEFT;
-      } else {
-        dbgprint ( "input right detected" ) ;
-        retval = Saba_input::RIGHT;
-      }
-    }
-  }
-  if (input_move_slow.cur == false) {
-    //No input active. Edge processed or noise, clear all edges
-    input_move_slow.seen = Edge::NONE;
-    input_move_fast.seen = Edge::NONE;
-    input_direction.seen = Edge::NONE;
-  }
-  return retval;
-}
-
-//**************************************************************************************************
-//                           web radio control                                                     *
-//**************************************************************************************************
-// Convert switch inputs to web radio commands.
-//**************************************************************************************************
-void web_radio_control()
-{
-  const char cmd_downpreset[sizeof(cmd)] = "downpreset=1";
-  const char cmd_uppreset[sizeof(cmd)] = "uppreset=1";
-  const char cmd_preset1[sizeof(cmd)] = "preset=1";
-
-  auto input = scan_saba_input();
-  switch (input) {
-    case Saba_input::LEFT:
-      xQueueSend(inputqueue, cmd_downpreset, 0);
-      break;
-    case Saba_input::RIGHT:
-      xQueueSend(inputqueue, cmd_uppreset, 0);
-      break;
-    case Saba_input::FAST_LEFT:
-      xQueueSend(inputqueue, cmd_preset1, 0);
-      break;
-    case Saba_input::FAST_RIGHT:
-    default:
-      break;
-  }
-}
-
-//**************************************************************************************************
-//                                     Input Task                                                  *
-//**************************************************************************************************
-// runs with constant <t_cycle> interval
-//**************************************************************************************************
+//
+////**************************************************************************************************
+////                           read / debounce a single input from rocker switch                     *
+////**************************************************************************************************
+//void read_saba_input(sabapin_struct &input)
+//{
+//  bool level ;                                           // Input level
+//
+//  if ( ( millis() - input.scan_time ) < 100 )             // Debounce
+//  {
+//    input.edge = Edge::NONE;
+//    return ;
+//  }
+//  input.scan_time = millis() ;                            // debounce timer over
+//
+//  level = ( digitalRead ( input.gpio ) == HIGH ) ;        // Sample the pin
+//  if ( level != input.cur )                               // Change seen?
+//  {
+//    if (level == false)                                   // new state false -> falling edge
+//    {
+//      input.edge = Edge::FALLING;
+//    }
+//    else                                                  // new state !false -> rising edge
+//    {
+//      input.edge = Edge::RISING;
+//    }
+//    input.seen = input.edge;
+//    input.cur = level;
+//  }
+//  else
+//  {
+//    input.edge = Edge::NONE;
+//  }
+//}
+//
+////**************************************************************************************************
+////                           read rocker switch input                                              *
+////**************************************************************************************************
+//// We have three digital inputs for the switch
+//// - direction
+//// - (slow) movement
+//// - fast movement.
+//// By mechanics, "movement" is active as soon as the rocker switch is moved in any direction. Therefore,
+//// any input while "movement" is inactive can be discarded as noise. "fast movement" can be activated
+//// in addition to "movement". Circuit design makes direction input default "right". Any event on this
+//// input means switch has been pushed to the left.
+////**************************************************************************************************
+//Saba_input scan_saba_input()
+//{
+//  Saba_input retval = Saba_input::NONE;
+//
+//  read_saba_input(input_move_slow);
+//  read_saba_input(input_move_fast);
+//  read_saba_input(input_direction);
+//
+//  if (input_move_slow.edge == Edge::FALLING)
+//  {
+//    if (input_move_fast.seen == Edge::FALLING)
+//    {
+//      if (input_direction.seen != Edge::NONE) {
+//        dbgprint ( "input fast left detected" ) ;
+//        retval = Saba_input::FAST_LEFT;
+//      } else {
+//        dbgprint ( "input fast right detected" ) ;
+//        retval = Saba_input::FAST_RIGHT;
+//      }
+//    } else {
+//      if (input_direction.seen != Edge::NONE) {
+//        dbgprint ( "input left detected" ) ;
+//        retval = Saba_input::LEFT;
+//      } else {
+//        dbgprint ( "input right detected" ) ;
+//        retval = Saba_input::RIGHT;
+//      }
+//    }
+//  }
+//  if (input_move_slow.cur == false) {
+//    //No input active. Edge processed or noise, clear all edges
+//    input_move_slow.seen = Edge::NONE;
+//    input_move_fast.seen = Edge::NONE;
+//    input_direction.seen = Edge::NONE;
+//  }
+//  return retval;
+//}
+//
+////**************************************************************************************************
+////                           web radio control                                                     *
+////**************************************************************************************************
+//// Convert switch inputs to web radio commands.
+////**************************************************************************************************
+//void web_radio_control()
+//{
+//  const char cmd_downpreset[sizeof(cmd)] = "downpreset=1";
+//  const char cmd_uppreset[sizeof(cmd)] = "uppreset=1";
+//  const char cmd_preset1[sizeof(cmd)] = "preset=1";
+//
+//  auto input = scan_saba_input();
+//  switch (input) {
+//    case Saba_input::LEFT:
+//      xQueueSend(inputqueue, cmd_downpreset, 0);
+//      break;
+//    case Saba_input::RIGHT:
+//      xQueueSend(inputqueue, cmd_uppreset, 0);
+//      break;
+//    case Saba_input::FAST_LEFT:
+//      xQueueSend(inputqueue, cmd_preset1, 0);
+//      break;
+//    case Saba_input::FAST_RIGHT:
+//    default:
+//      break;
+//  }
+//}
+//
+////**************************************************************************************************
+////                                     Input Task                                                  *
+////**************************************************************************************************
+//// runs with constant <t_cycle> interval
+////**************************************************************************************************
 void inputtask ( void * parameter )
 {
-  Time_ms t_cycle = 5;
-  TickType_t xLastWakeTime; //https://www.freertos.org/vtaskdelayuntil.html
+  vTaskDelay(1000);
 
-  //all inputs have level defined on external hardware, disable internal pullup/down
-  pinMode ( ini_block.saba_move_direction_pin , INPUT ) ;
-  gpio_set_pull_mode(static_cast<gpio_num_t>(ini_block.saba_move_direction_pin), gpio_pull_mode_t::GPIO_FLOATING);
-  pinMode ( ini_block.saba_move_is_fast_pin , INPUT ) ;
-  gpio_set_pull_mode(static_cast<gpio_num_t>(ini_block.saba_move_is_fast_pin), gpio_pull_mode_t::GPIO_FLOATING);
-  pinMode ( ini_block.saba_move_is_slow_pin , INPUT ) ;
-  gpio_set_pull_mode(static_cast<gpio_num_t>(ini_block.saba_move_is_slow_pin), gpio_pull_mode_t::GPIO_FLOATING);
-  pinMode ( ini_block.saba_search_hold_pin , INPUT ) ;
-  gpio_set_pull_mode(static_cast<gpio_num_t>(ini_block.saba_search_hold_pin), gpio_pull_mode_t::GPIO_FLOATING);
-  input_direction.gpio = ini_block.saba_move_direction_pin;
-  input_move_slow.gpio = ini_block.saba_move_is_slow_pin;
-  input_move_fast.gpio = ini_block.saba_move_is_fast_pin;
-
-  xLastWakeTime = xTaskGetTickCount();
-  while (true)
-  {
-    //check signal strength feedback
-    station_state_machine.tick();
-
-    //check web radio control by front rocker switch
-    web_radio_control();
-
-    // Wait for the next cycle.
-    vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(t_cycle));
-  }
+//  Time_ms t_cycle = 5;
+//  TickType_t xLastWakeTime; //https://www.freertos.org/vtaskdelayuntil.html
+//
+//  //all inputs have level defined on external hardware, disable internal pullup/down
+//  pinMode ( ini_block.saba_move_direction_pin , INPUT ) ;
+//  gpio_set_pull_mode(static_cast<gpio_num_t>(ini_block.saba_move_direction_pin), gpio_pull_mode_t::GPIO_FLOATING);
+//  pinMode ( ini_block.saba_move_is_fast_pin , INPUT ) ;
+//  gpio_set_pull_mode(static_cast<gpio_num_t>(ini_block.saba_move_is_fast_pin), gpio_pull_mode_t::GPIO_FLOATING);
+//  pinMode ( ini_block.saba_move_is_slow_pin , INPUT ) ;
+//  gpio_set_pull_mode(static_cast<gpio_num_t>(ini_block.saba_move_is_slow_pin), gpio_pull_mode_t::GPIO_FLOATING);
+//  pinMode ( ini_block.saba_search_hold_pin , INPUT ) ;
+//  gpio_set_pull_mode(static_cast<gpio_num_t>(ini_block.saba_search_hold_pin), gpio_pull_mode_t::GPIO_FLOATING);
+//  input_direction.gpio = ini_block.saba_move_direction_pin;
+//  input_move_slow.gpio = ini_block.saba_move_is_slow_pin;
+//  input_move_fast.gpio = ini_block.saba_move_is_fast_pin;
+//
+//  xLastWakeTime = xTaskGetTickCount();
+//  while (true)
+//  {
+//    //check signal strength feedback
+//    station_state_machine.tick();
+//
+//    //check web radio control by front rocker switch
+//    web_radio_control();
+//
+//    // Wait for the next cycle.
+//    vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(t_cycle));
+//  }
 }

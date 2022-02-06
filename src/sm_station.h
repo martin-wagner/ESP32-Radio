@@ -133,7 +133,7 @@ class Interface
     /**
      * get window size for signal analysis
      */
-    virtual Time_ms get_window_size() = 0;
+    virtual uint32_t get_window_size() = 0;
 
     /**
      * is called when station changed to active

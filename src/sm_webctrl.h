@@ -335,7 +335,7 @@ class Sm
 
   public:
 
-    Sm(Interface &h);
+    Sm(Interface &h, bool print = false);
     virtual ~Sm();
 
     /**
@@ -374,6 +374,7 @@ class Sm
   protected:
 
     std::unique_ptr<History> history;
+    const bool print;
 
 };
 
@@ -410,6 +411,9 @@ class History
     const Entry *current() const { return get(0); }
     const H &get() const;
     const H &operator()() const { return get(); };
+
+    //print sample for creating unit test
+    void print_sample(uint32_t i = 0) const;
 
   protected:
 

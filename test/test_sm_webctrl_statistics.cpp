@@ -101,6 +101,5 @@ TEST_F(TestStatistics, TestReady)
   EXPECT_EQ(0, dut().left.edge_count);
 }
 
-//todo test der funktionalitaet mit echten daten?? -> aufnehmen...
 
 

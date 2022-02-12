@@ -209,6 +209,7 @@
 #include "sm_dial.h"
 #include "sm_amp.h"
 #include "sm_station.h"
+#include "sm_webctrl.h"
 // Number of entries in the queue
 #define QSIZ 400
 // Debug buffer size
@@ -6170,41 +6171,76 @@ station::Sm station_state_machine(station_interface_implementation);
 //  }
 //}
 //
-////**************************************************************************************************
-////                                     Input Task                                                  *
-////**************************************************************************************************
-//// runs with constant <t_cycle> interval
-////**************************************************************************************************
+
+
+
+//**************************************************************************************************
+//                             Web Radio Control State Machine                                     *
+//**************************************************************************************************
+class Webctrl_interface_implementation : public webctrl::Interface
+{
+  public:
+
+    virtual void read_switch_inputs(uint8_t &movement, uint8_t &fast, uint8_t &left)
+    {
+      left = digitalRead(ini_block.saba_move_direction_pin);
+      movement = digitalRead(ini_block.saba_move_is_slow_pin);
+      fast = digitalRead(ini_block.saba_move_is_fast_pin);
+    }
+//    virtual bool read_pickup_input(uint8_t &active) { return false; };
+    virtual void get_dial_sm_state(dial::State &state)
+    {
+      state = dial_state_machine.get_state();
+    }
+    virtual uint32_t get_window_size()
+    {
+      return 1000;
+    }
+    virtual void get_debounce_sample_count(uint32_t &pos, uint32_t &neg)
+    {
+      pos = 25;
+      neg = 25;
+    }
+//    virtual void event_left() {};
+//    virtual void event_far_left() {};
+//    virtual void event_right() {};
+//    virtual void event_far_right() {};
+//    virtual void event_radio_is_active(bool active) {}
+
+};
+Webctrl_interface_implementation webctrl_interface_implementation;
+webctrl::Sm webctrl_state_machine(webctrl_interface_implementation, true);
+
+//**************************************************************************************************
+//                                     Input Task                                                  *
+//**************************************************************************************************
+// runs with constant <t_cycle> interval
+//**************************************************************************************************
 void inputtask ( void * parameter )
 {
-  vTaskDelay(1000);
+  Time_ms t_cycle = 5;
+  TickType_t xLastWakeTime; //https://www.freertos.org/vtaskdelayuntil.html
 
-//  Time_ms t_cycle = 5;
-//  TickType_t xLastWakeTime; //https://www.freertos.org/vtaskdelayuntil.html
-//
-//  //all inputs have level defined on external hardware, disable internal pullup/down
-//  pinMode ( ini_block.saba_move_direction_pin , INPUT ) ;
-//  gpio_set_pull_mode(static_cast<gpio_num_t>(ini_block.saba_move_direction_pin), gpio_pull_mode_t::GPIO_FLOATING);
-//  pinMode ( ini_block.saba_move_is_fast_pin , INPUT ) ;
-//  gpio_set_pull_mode(static_cast<gpio_num_t>(ini_block.saba_move_is_fast_pin), gpio_pull_mode_t::GPIO_FLOATING);
-//  pinMode ( ini_block.saba_move_is_slow_pin , INPUT ) ;
-//  gpio_set_pull_mode(static_cast<gpio_num_t>(ini_block.saba_move_is_slow_pin), gpio_pull_mode_t::GPIO_FLOATING);
-//  pinMode ( ini_block.saba_search_hold_pin , INPUT ) ;
-//  gpio_set_pull_mode(static_cast<gpio_num_t>(ini_block.saba_search_hold_pin), gpio_pull_mode_t::GPIO_FLOATING);
-//  input_direction.gpio = ini_block.saba_move_direction_pin;
-//  input_move_slow.gpio = ini_block.saba_move_is_slow_pin;
-//  input_move_fast.gpio = ini_block.saba_move_is_fast_pin;
-//
-//  xLastWakeTime = xTaskGetTickCount();
-//  while (true)
-//  {
-//    //check signal strength feedback
-//    station_state_machine.tick();
-//
-//    //check web radio control by front rocker switch
-//    web_radio_control();
-//
-//    // Wait for the next cycle.
-//    vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(t_cycle));
-//  }
+  //all inputs have level defined on external hardware, disable internal pullup/down
+  pinMode ( ini_block.saba_move_direction_pin , INPUT ) ;
+  gpio_set_pull_mode(static_cast<gpio_num_t>(ini_block.saba_move_direction_pin), gpio_pull_mode_t::GPIO_FLOATING);
+  pinMode ( ini_block.saba_move_is_fast_pin , INPUT ) ;
+  gpio_set_pull_mode(static_cast<gpio_num_t>(ini_block.saba_move_is_fast_pin), gpio_pull_mode_t::GPIO_FLOATING);
+  pinMode ( ini_block.saba_move_is_slow_pin , INPUT ) ;
+  gpio_set_pull_mode(static_cast<gpio_num_t>(ini_block.saba_move_is_slow_pin), gpio_pull_mode_t::GPIO_FLOATING);
+  pinMode ( ini_block.saba_search_hold_pin , INPUT ) ;
+  gpio_set_pull_mode(static_cast<gpio_num_t>(ini_block.saba_search_hold_pin), gpio_pull_mode_t::GPIO_FLOATING);
+
+  xLastWakeTime = xTaskGetTickCount();
+  while (true)
+  {
+    //check signal strength feedback
+    station_state_machine.tick();
+
+    //check web radio control by front rocker switch
+    webctrl_state_machine.tick();
+
+    // Wait for the next cycle.
+    vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(t_cycle));
+  }
 }

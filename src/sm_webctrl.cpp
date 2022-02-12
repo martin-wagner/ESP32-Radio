@@ -325,8 +325,9 @@ const char* State_internal_control::get_state_name()
   return c;
 }
 
-Sm::Sm(Interface &h) :
-    radio_entry(this), radio_stay(this), pickup_entry(this), pickup_stay(this), internal_control(this), h(h)
+Sm::Sm(Interface &h, bool print) :
+    radio_entry(this), radio_stay(this), pickup_entry(this), pickup_stay(this), internal_control(
+        this), h(h), print(print)
 {
   history = make_unique<History>(h.get_window_size());
   h.get_debounce_sample_count(ticks_debounce_pos, ticks_debounce_neg);
@@ -355,6 +356,9 @@ void Sm::tick()
   s.left.edge = Edge::NONE;
   s.dial_state = dial_state;
   history->add_sample(s);
+  if (print) {
+    history->print_sample();
+  }
 
   state->tick();
 }
@@ -428,6 +432,19 @@ const History::Entry* History::get(uint32_t i) const
 const History::H &History::get() const
 {
   return *(history.get());
+}
+
+void History::print_sample(uint32_t i) const
+{
+  auto entry = get(i);
+  if (entry == nullptr) {
+    return;
+  }
+
+  dbgprint(
+      "    add_sample((bool)%d, (Edge)%d, (bool)%d, (Edge)%d, (bool)%d, (Edge)%d, (dial::State)%d);",
+      entry->movement.state, entry->movement.edge, entry->fast.state,
+      entry->fast.edge, entry->left.state, entry->left.edge, entry->dial_state);
 }
 
 Edge History::get_edge(uint8_t current, uint8_t previous)

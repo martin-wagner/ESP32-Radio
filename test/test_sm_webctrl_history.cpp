@@ -21,16 +21,16 @@ class TestHistory : public ::testing::Test
 
     History dut;
 
-    void add_sample(bool m_s, Edge m_e, bool f_s, Edge f_e, bool l_s, Edge l_e, dial::State d_s)
+    void add_sample(bool m_s, bool f_s, bool l_s, dial::State d_s)
     {
       History::Entry s;
 
       s.movement.state = m_s;
-      s.movement.edge = m_e;
+      s.movement.edge = Edge::NONE;
       s.fast.state = f_s;
-      s.fast.edge = f_e;
+      s.fast.edge = Edge::NONE;
       s.left.state = l_s;
-      s.left.edge = l_e;
+      s.left.edge = Edge::NONE;
       s.dial_state = d_s;
       dut.add_sample(s);
     }
@@ -48,8 +48,8 @@ TEST_F(TestHistory, TestEmpty)
 
 TEST_F(TestHistory, TestNonEmpty)
 {
-  add_sample(true, Edge::NONE, false, Edge::NONE, false, Edge::NONE, dial::State::WAITING);
-  add_sample(false, Edge::FALLING, false, Edge::NONE, false, Edge::NONE, dial::State::WAITING);
+  add_sample(true, false, false, dial::State::WAITING);
+  add_sample(false, false, false, dial::State::WAITING);
 
   EXPECT_EQ(2, dut.size());
   EXPECT_TRUE(dut.is_valid(2));
@@ -60,9 +60,9 @@ TEST_F(TestHistory, TestNonEmpty)
 
 TEST_F(TestHistory, TestFilled)
 {
-  add_sample(true, Edge::NONE, false, Edge::NONE, false, Edge::NONE, dial::State::WAITING);
-  add_sample(false, Edge::FALLING, false, Edge::NONE, false, Edge::NONE, dial::State::WAITING);
-  add_sample(false, Edge::NONE, false, Edge::NONE, false, Edge::NONE, dial::State::WAITING);
+  add_sample(true, false, false, dial::State::WAITING);
+  add_sample(false, false, false, dial::State::WAITING);
+  add_sample(false, false, false, dial::State::WAITING);
 
   EXPECT_EQ(3, dut.size());
   EXPECT_TRUE(dut.is_valid(3));
@@ -73,10 +73,10 @@ TEST_F(TestHistory, TestFilled)
 
 TEST_F(TestHistory, TestRotate)
 {
-  add_sample(true, Edge::NONE, false, Edge::NONE, false, Edge::NONE, dial::State::WAITING);
-  add_sample(false, Edge::FALLING, false, Edge::NONE, false, Edge::NONE, dial::State::WAITING);
-  add_sample(false, Edge::NONE, false, Edge::NONE, false, Edge::NONE, dial::State::WAITING);
-  add_sample(true, Edge::RISING, false, Edge::NONE, false, Edge::NONE, dial::State::WAITING);
+  add_sample(true, false, false, dial::State::WAITING);
+  add_sample(false, false, false, dial::State::WAITING);
+  add_sample(false, false, false, dial::State::WAITING);
+  add_sample(true, false, false, dial::State::WAITING);
 
   EXPECT_EQ(3, dut.size());
   EXPECT_TRUE(dut.is_valid(3));
@@ -91,10 +91,10 @@ TEST_F(TestHistory, TestRotate)
 
 TEST_F(TestHistory, TestValues)
 {
-  add_sample(true, Edge::NONE, true, Edge::RISING, true, Edge::NONE, dial::State::SEARCHING);
-  add_sample(false, Edge::FALLING, true, Edge::NONE, true, Edge::NONE, dial::State::WAITING);
-  add_sample(false, Edge::NONE, false, Edge::FALLING, false, Edge::FALLING, dial::State::MOVING);
-  add_sample(true, Edge::RISING, false, Edge::NONE, false, Edge::NONE, dial::State::SEARCHING);
+  add_sample(true, true, true, dial::State::SEARCHING);
+  add_sample(false, true, true, dial::State::WAITING);
+  add_sample(false, false, false, dial::State::MOVING);
+  add_sample(true, false, false, dial::State::SEARCHING);
 
   auto &s = dut();
 
@@ -126,8 +126,8 @@ TEST_F(TestHistory, TestValues)
 
 TEST_F(TestHistory, TestValuesPartlyFilled)
 {
-  add_sample(false, Edge::NONE, true, Edge::RISING, false, Edge::NONE, dial::State::MOVING);
-  add_sample(true, Edge::RISING, true, Edge::NONE, true, Edge::RISING, dial::State::SEARCHING);
+  add_sample(false, true, false, dial::State::MOVING);
+  add_sample(true, true, true, dial::State::SEARCHING);
 
   ASSERT_EQ(2, dut.size());
 
@@ -136,7 +136,7 @@ TEST_F(TestHistory, TestValuesPartlyFilled)
   EXPECT_FALSE(s.at(1).movement.state);
   EXPECT_EQ(Edge::NONE, s.at(1).movement.edge);
   EXPECT_TRUE(s.at(1).fast.state);
-  EXPECT_EQ(Edge::RISING, s.at(1).fast.edge);
+  EXPECT_EQ(Edge::NONE, s.at(1).fast.edge);
   EXPECT_FALSE(s.at(1).left.state);
   EXPECT_EQ(Edge::NONE, s.at(1).left.edge);
   EXPECT_EQ(dial::State::MOVING, s.at(1).dial_state);

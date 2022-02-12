@@ -352,7 +352,7 @@ void Sm::tick()
   s.movement.edge = Edge::NONE;
   s.fast.state = fast;
   s.fast.edge = Edge::NONE;
-  s.left.state = fast;
+  s.left.state = left;
   s.left.edge = Edge::NONE;
   s.dial_state = dial_state;
   history->add_sample(s);
@@ -401,15 +401,17 @@ void History::add_sample(const Entry &s)
   Entry &current = (*history)[0];
   Entry &previous = (*history)[1];
 
-  std::rotate(history->begin(), history->begin() + history->size() - 1, history->end()); //rotate right  by one
+  std::rotate(history->begin(), history->begin() + history->size() - 1, history->end()); //rotate right  by one. C++20 has shift...
   current = s;
-
-  current.movement.edge = get_edge(current.movement.state, previous.movement.state);
-  current.fast.edge = get_edge(current.fast.state, previous.fast.state);
-  current.left.edge = get_edge(current.left.state, previous.left.state);
 
   if (samples_taken < UINT32_MAX) {
     samples_taken ++;
+  }
+
+  if (samples_taken > 1) {
+    current.movement.edge = get_edge(current.movement.state, previous.movement.state);
+    current.fast.edge = get_edge(current.fast.state, previous.fast.state);
+    current.left.edge = get_edge(current.left.state, previous.left.state);
   }
 }
 
@@ -442,9 +444,8 @@ void History::print_sample(uint32_t i) const
   }
 
   dbgprint(
-      "    add_sample((bool)%d, (Edge)%d, (bool)%d, (Edge)%d, (bool)%d, (Edge)%d, (dial::State)%d);",
-      entry->movement.state, entry->movement.edge, entry->fast.state,
-      entry->fast.edge, entry->left.state, entry->left.edge, entry->dial_state);
+      "    add_sample((bool)%d, (bool)%d, (bool)%d, (dial::State)%d);",
+      entry->movement.state, entry->fast.state, entry->left.state, entry->dial_state);
 }
 
 Edge History::get_edge(uint8_t current, uint8_t previous)
@@ -480,6 +481,8 @@ Statistics::Statistics(Interface &h, const History &history, uint32_t for_n_samp
   set_stats_single(stats.fast,     get_input_fast);
   set_stats_single(stats.left,     get_input_left);
 
+  //todo event mit fast + move tasten loslassen erkennen...
+
   valid = true;
 }
 
@@ -501,7 +504,7 @@ void Statistics::set_stats_single(Input &input, Get_history_input &get_history_i
   //search for valid events, count edges
   debounce_pos_counter = 0;
   debounce_neg_counter = 0;
-  for (i = 0; i < n; i++) {
+  for (i = 0; i < n; i++) { //newest to oldest
     const auto &sample = get_history_input(*history.get(i));
 
     switch (sample.edge) {
@@ -521,7 +524,7 @@ void Statistics::set_stats_single(Input &input, Get_history_input &get_history_i
         } else {
           debounce_neg_counter ++;
         }
-        if ((debounce_pos_counter > debounce.pos_edges) && (debounce_neg_counter > debounce.neg_edges)) {
+        if ((debounce_pos_counter >= debounce.pos_edges) && (debounce_neg_counter >= debounce.neg_edges)) {
           input.valid_event = true;
         }
         break;

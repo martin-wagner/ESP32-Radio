@@ -6183,9 +6183,9 @@ class Webctrl_interface_implementation : public webctrl::Interface
 
     virtual void read_switch_inputs(uint8_t &movement, uint8_t &fast, uint8_t &left)
     {
-      left = digitalRead(ini_block.saba_move_direction_pin);
       movement = digitalRead(ini_block.saba_move_is_slow_pin);
-      fast = digitalRead(ini_block.saba_move_is_fast_pin);
+      fast = digitalRead(ini_block.saba_move_is_fast_pin);;
+      left = ( ~ digitalRead(ini_block.saba_move_direction_pin)) & 0x01;
     }
 //    virtual bool read_pickup_input(uint8_t &active) { return false; };
     virtual void get_dial_sm_state(dial::State &state)
@@ -6201,15 +6201,16 @@ class Webctrl_interface_implementation : public webctrl::Interface
       pos = 25;
       neg = 25;
     }
-//    virtual void event_left() {};
-//    virtual void event_far_left() {};
-//    virtual void event_right() {};
-//    virtual void event_far_right() {};
-//    virtual void event_radio_is_active(bool active) {}
+    //todo generate cmd for webradio
+    virtual void event_left() { dbgprint("left");};
+    virtual void event_far_left() { dbgprint("f left");};
+    virtual void event_right() { dbgprint("right");};
+    virtual void event_far_right() { dbgprint("f right");};
+    virtual void event_radio_is_active(bool active) { dbgprint("a %d", active);}
 
 };
 Webctrl_interface_implementation webctrl_interface_implementation;
-webctrl::Sm webctrl_state_machine(webctrl_interface_implementation, true);
+webctrl::Sm webctrl_state_machine(webctrl_interface_implementation);
 
 //**************************************************************************************************
 //                                     Input Task                                                  *

@@ -49,7 +49,7 @@
 #include "sm_common.h"
 #include "sm_dial.h"
 
-#define SM_WEBCTRL_PRINTING //todo
+//#define SM_WEBCTRL_PRINTING //todo
 
 namespace webctrl {
 

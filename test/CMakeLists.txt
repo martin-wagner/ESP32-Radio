@@ -7,6 +7,7 @@ add_executable(
   log.cpp
   test_sm_webctrl_history.cpp
   test_sm_webctrl_statistics.cpp
+  test_sm_webctrl_states_pickup.cpp
 )
 target_include_directories(
   sm_webctrl
@@ -28,3 +29,5 @@ gtest_discover_tests(sm_webctrl)
 # cd build/test
 # cmake ../..
 # make && ctest
+# single test memcheck:
+# valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose ./sm_webctrl

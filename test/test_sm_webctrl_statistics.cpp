@@ -273,5 +273,6 @@ TEST_F(TestStatistics, TestEvents)
   EXPECT_TRUE(dut().left.valid_event);
 }
 
-
+//todo test statistics for pick-up detection without pick-up enabled input
+//test cases in test/samples dir
 

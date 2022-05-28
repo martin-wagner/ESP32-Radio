@@ -47,11 +47,13 @@ bool Abstract_state::tick_precheck_handle()
       if (sm->state != &sm->pickup_stay) {
         set_state(&sm->pickup_stay);
         sm->h.event_radio_is_active(false);
+        dbgprint ( "switch to pickup (direct)" ) ;
       }
     } else {
       if (sm->state != &sm->radio_stay) {
         set_state(&sm->radio_stay);
         sm->h.event_radio_is_active(true);
+        dbgprint ( "switch to radio (direct)" ) ;
       }
     }
     return true;
@@ -72,6 +74,7 @@ void State_radio_entry::tick()
   if (is_instable()) {
     set_state(&sm->pickup_entry);
     sm->h.event_radio_is_active(false);
+    dbgprint ( "switch to pickup (check)" ) ;
     return;
   }
 }
@@ -129,6 +132,7 @@ void State_radio_stay::tick()
   if (is_instable()) {
     set_state(&sm->pickup_entry);
     sm->h.event_radio_is_active(false);
+    dbgprint ( "switch to pickup (check)" ) ;
     return;
   }
   if ( ! is_stable()) {
@@ -179,21 +183,80 @@ bool State_radio_stay::is_instable()
   return false;
 }
 
-void State_pickup_entry::tick()
+void State_pickup::init_state()
 {
-  if (tick_precheck_handle()) {
+  movement_event_occured = false;
+  count = 0;
+  Abstract_state::init_state();
+}
+
+void State_pickup::check_generate_events()
+{
+  //unit testing -- evaluate container event with less samples. Does not break anything.
+  auto size = sm->history->size();
+  if (size > TICKS_EVENT_WINDOW) {
+    size = TICKS_EVENT_WINDOW;
+  }
+  Statistics stats(sm->h, *(sm->history), size);
+  if ( ! stats.are_valid()) {
     return;
   }
 
-  if (is_stable()) {
-    set_state(&sm->pickup_stay);
+  if ( ! stats().movement.valid_event) {
+    //movement not detected
+    movement_event_occured = false;
+    count = 0;
     return;
   }
-  if (is_instable()) {
-    set_state(&sm->radio_entry);
-    sm->h.event_radio_is_active(true);
+  count ++;
+//  if (count < 10) {
+//    return;
+//  } todo
+
+
+  if (movement_event_occured == true) {
+    //we can only handle _one_ event in time windows. Multiple events would require
+    //us to check for correlation in time points (e.g. if we have two movement and one
+    //left event -- does the left event correlate to the current movement event or to the
+    //one before that).
     return;
   }
+  movement_event_occured = true;
+
+  auto fast = stats().fast.valid_event;
+  auto left = stats().left.valid_event;
+  if (fast && left) {
+    sm->h.event_far_left();
+    dbgprint ( "rocker left fast" ) ;
+  } else if (fast && ! left) {
+    sm->h.event_far_right();
+    dbgprint ( "rocker right fast" ) ;
+  } else if ( ! fast && left) {
+    sm->h.event_left();
+    dbgprint ( "rocker left" ) ;
+  } else if ( ! fast && ! left) {
+    sm->h.event_right();
+    dbgprint ( "rocker right" ) ;
+  }
+}
+
+void State_pickup_entry::tick()
+{
+  auto no_check = tick_precheck_handle();
+  if (! no_check) {
+    if (is_stable()) {
+      set_state(&sm->pickup_stay);
+      return;
+    }
+    if (is_instable()) {
+      set_state(&sm->radio_entry);
+      sm->h.event_radio_is_active(true);
+      dbgprint ( "switch to radio (check)" ) ;
+      return;
+    }
+  }
+
+  check_generate_events();
 }
 
 void State_pickup_entry::init_state()
@@ -241,18 +304,21 @@ bool State_pickup_entry::is_instable()
 
 void State_pickup_stay::tick()
 {
-  if (tick_precheck_handle()) {
-    return;
+  auto no_check = tick_precheck_handle();
+  if (! no_check) {
+    if (is_instable()) {
+      set_state(&sm->radio_entry);
+      sm->h.event_radio_is_active(true);
+      dbgprint ( "switch to radio (check)" ) ;
+      return;
+    }
+    if ( ! is_stable()) {
+      set_state(&sm->pickup_entry);
+      return;
+    }
   }
 
-  if (is_instable()) {
-    set_state(&sm->radio_entry);
-    sm->h.event_radio_is_active(true);
-    return;
-  }
-  if ( ! is_stable()) {
-    set_state(&sm->pickup_entry);
-  }
+  check_generate_events();
 }
 
 void State_pickup_stay::init_state()
@@ -310,6 +376,7 @@ void State_internal_control::tick()
   if (ticks_waiting > TICKS_LEAVE) {
     set_state(&sm->radio_entry);
     sm->h.event_radio_is_active(true);
+    dbgprint ( "switch to radio (from control)" ) ;
   }
 }
 
@@ -330,7 +397,6 @@ Sm::Sm(Interface &h, bool print) :
         this), h(h), print(print)
 {
   history = make_unique<History>(h.get_window_size());
-  h.get_debounce_sample_count(ticks_debounce_pos, ticks_debounce_neg);
 }
 
 Sm::~Sm()

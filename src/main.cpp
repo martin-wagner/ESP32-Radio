@@ -349,6 +349,7 @@ struct ini_struct
   int8_t         saba_move_is_fast_pin ;              // GPIO connected to is movement fast active input
   int8_t         saba_move_is_slow_pin ;              // GPIO connected to is movement slow active input
   int8_t         saba_search_hold_pin ;               // GPIO connected to search hold / station found input
+  int8_t         saba_pickup_active_pin ;             // GPIO connected to pickup input activated input
   uint16_t       bat0 ;                               // ADC value for 0 percent battery charge
   uint16_t       bat100 ;                             // ADC value for 100 percent battery charge
 } ;
@@ -2657,6 +2658,7 @@ void readIOprefs()
     { "pin_saba_move_is_fast",  &ini_block.saba_move_is_fast_pin,   34 },
     { "pin_saba_move_is_slow",  &ini_block.saba_move_is_slow_pin,   33 },
     { "pin_saba_search_hold",   &ini_block.saba_search_hold_pin,    36 },
+    { "pin_saba_pickup_active", &ini_block.saba_pickup_active_pin,  39 },
     { NULL,            NULL,                        0  }  // End of list
   } ;
   int         i ;                                         // Loop control
@@ -3587,6 +3589,7 @@ void setup()
     NULL,                                                 // parameter of the task
     1,                                                    // priority of the task
     &xspftask ) ;                                         // Task handle to keep track of created task
+  dialqueue = xQueueCreate(10, sizeof(Saba_remote_control));
   xTaskCreate (                                           // Task that controls dial movement
     dialtask,
     "Dialtask",
@@ -3594,7 +3597,7 @@ void setup()
     NULL,
     1,                                                    // run when nothing else to do, but above idle task
     &xdialtask);
-  dialqueue = xQueueCreate(10, sizeof(Saba_remote_control));
+  ampqueue = xQueueCreate(10, sizeof(Saba_remote_control));
   xTaskCreate (                                           // Task that controls audio amp, power
     amptask,
     "Amptask",
@@ -3602,7 +3605,7 @@ void setup()
     NULL,
     1,                                                    // run when nothing else to do, but above idle task
     &xamptask);
-  ampqueue = xQueueCreate(10, sizeof(Saba_remote_control));
+  inputqueue = xQueueCreate(1, sizeof(cmd));
   xTaskCreate (                                           // Task that reads the inputs from the radio
     inputtask,
     "Inputtask",
@@ -3610,7 +3613,6 @@ void setup()
     NULL,
     2,                                                    // needs to keep -more or less accurate- timing
     &xinputtask);
-  inputqueue = xQueueCreate(1, sizeof(cmd));
 }
 
 
@@ -6072,121 +6074,6 @@ class Station_interface_implementation : public station::Interface
 };
 Station_interface_implementation station_interface_implementation;
 station::Sm station_state_machine(station_interface_implementation);
-//
-////**************************************************************************************************
-////                           read / debounce a single input from rocker switch                     *
-////**************************************************************************************************
-//void read_saba_input(sabapin_struct &input)
-//{
-//  bool level ;                                           // Input level
-//
-//  if ( ( millis() - input.scan_time ) < 100 )             // Debounce
-//  {
-//    input.edge = Edge::NONE;
-//    return ;
-//  }
-//  input.scan_time = millis() ;                            // debounce timer over
-//
-//  level = ( digitalRead ( input.gpio ) == HIGH ) ;        // Sample the pin
-//  if ( level != input.cur )                               // Change seen?
-//  {
-//    if (level == false)                                   // new state false -> falling edge
-//    {
-//      input.edge = Edge::FALLING;
-//    }
-//    else                                                  // new state !false -> rising edge
-//    {
-//      input.edge = Edge::RISING;
-//    }
-//    input.seen = input.edge;
-//    input.cur = level;
-//  }
-//  else
-//  {
-//    input.edge = Edge::NONE;
-//  }
-//}
-//
-////**************************************************************************************************
-////                           read rocker switch input                                              *
-////**************************************************************************************************
-//// We have three digital inputs for the switch
-//// - direction
-//// - (slow) movement
-//// - fast movement.
-//// By mechanics, "movement" is active as soon as the rocker switch is moved in any direction. Therefore,
-//// any input while "movement" is inactive can be discarded as noise. "fast movement" can be activated
-//// in addition to "movement". Circuit design makes direction input default "right". Any event on this
-//// input means switch has been pushed to the left.
-////**************************************************************************************************
-//Saba_input scan_saba_input()
-//{
-//  Saba_input retval = Saba_input::NONE;
-//
-//  read_saba_input(input_move_slow);
-//  read_saba_input(input_move_fast);
-//  read_saba_input(input_direction);
-//
-//  if (input_move_slow.edge == Edge::FALLING)
-//  {
-//    if (input_move_fast.seen == Edge::FALLING)
-//    {
-//      if (input_direction.seen != Edge::NONE) {
-//        dbgprint ( "input fast left detected" ) ;
-//        retval = Saba_input::FAST_LEFT;
-//      } else {
-//        dbgprint ( "input fast right detected" ) ;
-//        retval = Saba_input::FAST_RIGHT;
-//      }
-//    } else {
-//      if (input_direction.seen != Edge::NONE) {
-//        dbgprint ( "input left detected" ) ;
-//        retval = Saba_input::LEFT;
-//      } else {
-//        dbgprint ( "input right detected" ) ;
-//        retval = Saba_input::RIGHT;
-//      }
-//    }
-//  }
-//  if (input_move_slow.cur == false) {
-//    //No input active. Edge processed or noise, clear all edges
-//    input_move_slow.seen = Edge::NONE;
-//    input_move_fast.seen = Edge::NONE;
-//    input_direction.seen = Edge::NONE;
-//  }
-//  return retval;
-//}
-//
-////**************************************************************************************************
-////                           web radio control                                                     *
-////**************************************************************************************************
-//// Convert switch inputs to web radio commands.
-////**************************************************************************************************
-//void web_radio_control()
-//{
-//  const char cmd_downpreset[sizeof(cmd)] = "downpreset=1";
-//  const char cmd_uppreset[sizeof(cmd)] = "uppreset=1";
-//  const char cmd_preset1[sizeof(cmd)] = "preset=1";
-//
-//  auto input = scan_saba_input();
-//  switch (input) {
-//    case Saba_input::LEFT:
-//      xQueueSend(inputqueue, cmd_downpreset, 0);
-//      break;
-//    case Saba_input::RIGHT:
-//      xQueueSend(inputqueue, cmd_uppreset, 0);
-//      break;
-//    case Saba_input::FAST_LEFT:
-//      xQueueSend(inputqueue, cmd_preset1, 0);
-//      break;
-//    case Saba_input::FAST_RIGHT:
-//    default:
-//      break;
-//  }
-//}
-//
-
-
 
 //**************************************************************************************************
 //                             Web Radio Control State Machine                                     *
@@ -6201,26 +6088,63 @@ class Webctrl_interface_implementation : public webctrl::Interface
       fast = digitalRead(ini_block.saba_move_is_fast_pin);;
       left = ( ~ digitalRead(ini_block.saba_move_direction_pin)) & 0x01;
     }
-//    virtual bool read_pickup_input(uint8_t &active) { return false; };
+
+    virtual bool read_pickup_input(uint8_t &active)
+    {
+      active = digitalRead(ini_block.saba_pickup_active_pin); //todo ist das so richtig rum?
+      return true; //return false if pickup active not available //todo false not implemented in base class
+    }
+
     virtual void get_dial_sm_state(dial::State &state)
     {
       state = dial_state_machine.get_state();
     }
+
     virtual uint32_t get_window_size()
     {
       return 1000;
     }
+
     virtual void get_debounce_sample_count(uint32_t &pos, uint32_t &neg)
     {
-      pos = 25;
-      neg = 25;
+      //fiddle factors
+      pos = 5;
+      neg = 20;
     }
-    //todo generate cmd for webradio
-    virtual void event_left() { dbgprint("left");};
-    virtual void event_far_left() { dbgprint("f left");};
-    virtual void event_right() { dbgprint("right");};
-    virtual void event_far_right() { dbgprint("f right");};
-    virtual void event_radio_is_active(bool active) { dbgprint("a %d", active);}
+
+    virtual void event_left()
+    {
+      const char cmd_downpreset[sizeof(cmd)] = "downpreset=1";
+      xQueueSend(inputqueue, cmd_downpreset, 0);
+    }
+
+    virtual void event_far_left()
+    {
+      const char cmd_preset1[sizeof(cmd)] = "preset=1";
+      xQueueSend(inputqueue, cmd_preset1, 0);
+    }
+
+    virtual void event_right()
+    {
+      const char cmd_uppreset[sizeof(cmd)] = "uppreset=1";
+      xQueueSend(inputqueue, cmd_uppreset, 0);
+    }
+
+    virtual void event_far_right()
+    {
+    }
+
+    virtual void event_radio_is_active(bool active)
+    {
+      const char cmd_stop[sizeof(cmd)] = "stop2";
+      const char cmd_resume[sizeof(cmd)] = "resume";
+
+      if (active) {
+        xQueueSend(inputqueue, cmd_stop, 0);
+      } else {
+        xQueueSend(inputqueue, cmd_resume, 0);
+      }
+    }
 
 };
 Webctrl_interface_implementation webctrl_interface_implementation;
@@ -6245,6 +6169,15 @@ void inputtask ( void * parameter )
   gpio_set_pull_mode(static_cast<gpio_num_t>(ini_block.saba_move_is_slow_pin), gpio_pull_mode_t::GPIO_FLOATING);
   pinMode ( ini_block.saba_search_hold_pin , INPUT ) ;
   gpio_set_pull_mode(static_cast<gpio_num_t>(ini_block.saba_search_hold_pin), gpio_pull_mode_t::GPIO_FLOATING);
+  //always active if not connected
+  pinMode ( ini_block.saba_pickup_active_pin , INPUT ) ;
+  gpio_set_pull_mode(static_cast<gpio_num_t>(ini_block.saba_search_hold_pin), gpio_pull_mode_t::GPIO_PULLUP_ONLY);
+
+  //fixme right way to sync for running web radio?
+  while (datamode == datamode_t::INIT) {
+    vTaskDelay(25);
+  }
+  vTaskDelay(100);
 
   xLastWakeTime = xTaskGetTickCount();
   while (true)

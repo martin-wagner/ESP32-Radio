@@ -34,10 +34,9 @@
  * - when no switch is active and radio is active, part of the audio signal is coupled
  *   on top of the high-Z search dc signal, leading to erroneous detection of input changes
  *  -> disable event generation when pick-up is not enabled
- * However we don't have a digital input for that, so some guesswork is implemented in
- * software. //todo was ist implementiert...
- * /todo input is on pcb, requires modification
- * in radio and implementing in software.
+ * However we might not have a digital input for that, so some guesswork is implemented in
+ * software.
+ * todo finish detection, currently requires pick-up active input signal
  */
 
 #ifndef SRC_SM_WEBCTRL_H_
@@ -169,6 +168,22 @@ class State_pickup : public Abstract_state
     virtual ~State_pickup() {};
 
     virtual State get_state() { return State::PICKUP; };
+
+  protected:
+
+    virtual void init_state();
+
+    virtual void check_generate_events();
+
+  private:
+
+    //timeframe to check for button pressed input events
+    //we handle only one event within this time window!
+    const uint32_t TICKS_EVENT_WINDOW = 500 / MS_TO_TICK_DIVIDER;
+
+    bool movement_event_occured = false;
+
+    int count = 0;
 
 };
 
@@ -365,11 +380,6 @@ class Sm
   private:
 
     Time_ms t_diff_incremental = 0;
-
-  private:
-
-    uint32_t ticks_debounce_pos;
-    uint32_t ticks_debounce_neg;
 
   protected:
 

@@ -5166,7 +5166,8 @@ const char* analyzeCmd ( const char* str )
 //   station    = <mp3 stream>              // Select new station (will not be saved)              *
 //   station    = <URL>.mp3                 // Play standalone .mp3 file (not saved)               *
 //   station    = <URL>.m3u                 // Select playlist (will not be saved)                 *
-//   stop                                   // Stop playing                                        *
+//   stop                                   // Stop/Resume playing                                 *
+//   stop2                                  // Stop playing                                        *
 //   resume                                 // Resume playing                                      *
 //   mute                                   // Mute/unmute the music (toggle)                      *
 //   wifi_00    = mySSID/mypassword         // Set WiFi SSID and password *)                       *
@@ -5329,6 +5330,19 @@ const char* analyzeCmd ( const char* par, const char* val )
       sprintf ( reply, "Preset is now %d",            // Reply new preset
                 ini_block.newpreset ) ;
     }
+  }
+  else if ( argument == "stop2" )                     // Stop requested?
+  {
+    if ( datamode & ( HEADER | DATA | METADATA | PLAYLISTINIT |
+                      PLAYLISTHEADER | PLAYLISTDATA ) )
+
+    {
+      setdatamode ( STOPREQD ) ;                      // Request STOP
+    }
+  }
+  else if ( argument == "resume" )
+  {
+    hostreq = true ;                                  // Request UNSTOP
   }
   else if ( argument == "stop" )                      // (un)Stop requested?
   {

@@ -10,6 +10,7 @@
   add_sample(false);
   add_sample(false);
   add_sample(false);
+  add_sample(true ); //<-- rising edge
   add_sample(true );
   add_sample(true );
   add_sample(true );
@@ -27,11 +28,10 @@
   add_sample(true );
   add_sample(true );
   add_sample(true );
-  add_sample(true );
-  add_sample(false); //<-- transition
+  add_sample(false); //<-- falling edge, valid sample count for event
   add_sample(true ); //<-- bounce
   add_sample(true );
-  add_sample(false); //<-- stable
+  add_sample(false); //<-- falling edge, not sufficient samples for event
   add_sample(false);
   add_sample(false);
   add_sample(false);

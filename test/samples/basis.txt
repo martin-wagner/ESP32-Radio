@@ -3,30 +3,30 @@
   add_sample(false, false, false, dial::State::WAITING);
   add_sample(true,  false, false, dial::State::WAITING);
   add_sample(false, true,  true,  dial::State::WAITING);
-  add_sample(true,  true,  true,  dial::State::WAITING); //<-- event on 3
+  add_sample(true,  true,  true,  dial::State::WAITING); 
   add_sample(false, false, true,  dial::State::WAITING);
   add_sample(true,  false, true,  dial::State::WAITING);
-  add_sample(false, true,  false, dial::State::WAITING);
+  add_sample(false, true,  false, dial::State::WAITING); //<-- event on 3
   add_sample(true,  true,  false, dial::State::WAITING);
   add_sample(false, false, false, dial::State::WAITING);
   add_sample(true,  false, false, dial::State::WAITING); 
   add_sample(false, true,  true,  dial::State::WAITING);
-  add_sample(true,  true,  true,  dial::State::WAITING); //<-- event on 3
+  add_sample(true,  true,  true,  dial::State::WAITING); 
   add_sample(false, false, true,  dial::State::WAITING);
   add_sample(true,  false, true,  dial::State::WAITING);
-  add_sample(false, true,  false, dial::State::WAITING);
+  add_sample(false, true,  false, dial::State::WAITING); //<-- event on 3
   add_sample(true,  true,  false, dial::State::WAITING);
   add_sample(false, false, false, dial::State::WAITING);
   add_sample(true,  false, false, dial::State::WAITING); 
   add_sample(false, true,  true,  dial::State::WAITING);
   add_sample(true,  true,  true,  dial::State::WAITING);
   add_sample(false, false, true,  dial::State::WAITING);
-  add_sample(true,  false, true,  dial::State::WAITING); //<-- event on 3
+  add_sample(true,  false, true,  dial::State::WAITING); 
   add_sample(false, true,  true,  dial::State::WAITING);
-  add_sample(true,  true,  true,  dial::State::WAITING); //<-- event on 1
-  add_sample(true,  false, false, dial::State::WAITING);
+  add_sample(true,  true,  true,  dial::State::WAITING); 
+  add_sample(true,  false, false, dial::State::WAITING); //<-- event on 3
   add_sample(true,  false, false, dial::State::WAITING); 
-  add_sample(false, false, false, dial::State::WAITING);
+  add_sample(false, false, false, dial::State::WAITING); //<-- event on 1
   add_sample(false, false, false, dial::State::WAITING);
   add_sample(false, false, false, dial::State::WAITING); 
   add_sample(false, false, false, dial::State::WAITING); 
@@ -34,14 +34,14 @@
   add_sample(false, false, false, dial::State::WAITING);
   add_sample(false, false, false, dial::State::WAITING);
   add_sample(false, false, false, dial::State::WAITING);
-  add_sample(false, true,  false, dial::State::WAITING); //<-- event on 2
+  add_sample(false, true,  false, dial::State::WAITING); 
   add_sample(true,  true,  false, dial::State::WAITING);
-  add_sample(true,  true,  false, dial::State::WAITING);
+  add_sample(false, true,  false, dial::State::WAITING);
+  add_sample(true,  false, false, dial::State::WAITING); //<-- event on 2
+  add_sample(false, false, false, dial::State::WAITING);
   add_sample(true,  false, false, dial::State::WAITING);
+  add_sample(false, false, false, dial::State::WAITING);
   add_sample(true,  false, false, dial::State::WAITING);
-  add_sample(true,  false, false, dial::State::WAITING);
-  add_sample(true,  false, false, dial::State::WAITING);
-  add_sample(true,  false, false, dial::State::WAITING);
-  add_sample(true,  false, false, dial::State::WAITING);
+  add_sample(false, false, false, dial::State::WAITING);
   add_sample(false, false, false, dial::State::WAITING);
   add_sample(true,  false, false, dial::State::WAITING); // <-- newest sample

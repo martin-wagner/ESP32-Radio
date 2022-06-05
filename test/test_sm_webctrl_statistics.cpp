@@ -228,7 +228,7 @@ TEST_F(TestStatistics, TestCounting)
   EXPECT_TRUE(dut().movement.state);
   EXPECT_FALSE(dut().fast.state);
   EXPECT_FALSE(dut().left.state);
-  EXPECT_EQ(31, dut().movement.edge_count);
+  EXPECT_EQ(37, dut().movement.edge_count);
   EXPECT_EQ(15, dut().fast.edge_count);
   EXPECT_EQ(8,  dut().left.edge_count);
 }
@@ -245,22 +245,22 @@ TEST_F(TestStatistics, TestEvents)
     valid event two samples high, detection begins on falling edge
 
     add_sample(true,  ..., ..., ...); // <-- oldest sample
-    add_sample(true,  ..., ..., ...);
-    add_sample(true,  ..., ..., ...);
-    add_sample(true,  ..., ..., ...);
-    add_sample(true,  ..., ..., ...);
+    add_sample(true,  ..., ..., ...); // 1
+    add_sample(true,  ..., ..., ...); // 2
+    add_sample(true,  ..., ..., ...); // 3
+    add_sample(true,  ..., ..., ...); // 4
                      <--- falling edge from time point of view
-    add_sample(false, ..., ..., ...); //edge detection
-    add_sample(false, ..., ..., ...); // sample + 1
-    add_sample(false, ..., ..., ...); // sample + 2
-    add_sample(false, ..., ..., ...); // sample + 3 -> detect valid event
+    add_sample(false, ..., ..., ...); //edge detection, valid event
+    add_sample(false, ..., ..., ...);
+    add_sample(false, ..., ..., ...);
+    add_sample(false, ..., ..., ...);
     add_sample(false, ..., ..., ...);
     add_sample(false, ..., ..., ...);
     add_sample(false, ..., ..., ...);
                      <--- rising edge from time point of view
     add_sample(true,  ..., ..., ...); //edge detection
     add_sample(true,  ..., ..., ...);
-    add_sample(true,  ..., ..., ...); // <-- newest sample, evaluation in code begins HERE
+    add_sample(true,  ..., ..., ...); // <-- newest sample
 
   */
 

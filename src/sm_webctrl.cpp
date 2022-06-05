@@ -578,25 +578,25 @@ void Statistics::set_stats_single(Input &input, Get_history_input &get_history_i
 
   //search for valid events, count edges
   debounce_counter = 0;
-  for (i = 0; i < n; i++) { //newest to oldest
-    const auto &sample = get_history_input(*history.get(i));
+  for (i = 0; i < n; i++) { //oldest to newest
+    const auto &sample = get_history_input(*history.get(n - i - 1));
 
     switch (sample.edge) {
       case Edge::RISING:
         input.edge_count ++;
-        //event detection on falling edge -> start new detection on rising edge
+        //reset detection on rising edge
         debounce_counter = 0;
         break;
       case Edge::FALLING:
         input.edge_count ++;
+        if (debounce_counter >= debounce_samples) {
+          input.valid_event = true;
+        }
         break;
       case Edge::NONE:
       default:
         if (sample.state == true) {
           debounce_counter ++;
-        }
-        if (debounce_counter >= debounce_samples) {
-          input.valid_event = true;
         }
         break;
     }

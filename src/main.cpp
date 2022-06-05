@@ -6105,10 +6105,11 @@ class Webctrl_interface_implementation : public webctrl::Interface
       return 1000;
     }
 
-    virtual void get_debounce_sample_count(uint32_t &s)
+    virtual void get_debounce_sample_count(uint32_t &stable, uint32_t &delay)
     {
-      //fiddle factor
-      s = 10;
+      //fiddle factors
+      stable = 10;
+      delay = 10;
     }
 
     virtual void event_left()

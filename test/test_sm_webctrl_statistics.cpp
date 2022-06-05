@@ -47,7 +47,7 @@ class TestStatistics : public ::testing::Test
     void SetUp()
     {
       ON_CALL(mock_interface, get_debounce_sample_count)
-          .WillByDefault(DoAll(SetArgReferee<0>(debounce_samples)));
+          .WillByDefault(DoAll(SetArgReferee<0>(debounce_samples), SetArgReferee<1>(0)));
     }
 
     void TearDown()
@@ -236,7 +236,7 @@ TEST_F(TestStatistics, TestCounting)
 TEST_F(TestStatistics, TestEvents)
 {
   EXPECT_CALL(mock_interface, get_debounce_sample_count)
-      .WillRepeatedly(DoAll(SetArgReferee<0>(2)));
+      .WillRepeatedly(DoAll(SetArgReferee<0>(2), SetArgReferee<1>(0)));
 
 #include "samples/basis.txt"
 
@@ -275,7 +275,7 @@ TEST_F(TestStatistics, TestEvents)
 TEST_F(TestStatistics, TestDebounce)
 {
   EXPECT_CALL(mock_interface, get_debounce_sample_count)
-      .WillRepeatedly(DoAll(SetArgReferee<0>(5)));
+      .WillRepeatedly(DoAll(SetArgReferee<0>(5), SetArgReferee<1>(0)));
 
 #include "samples/debounce.txt"
 

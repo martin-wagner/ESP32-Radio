@@ -209,9 +209,9 @@ void State_pickup::check_generate_events()
     return;
   }
   count ++;
-//  if (count < 10) {
-//    return;
-//  } todo
+  if (count < sm->sync_delay) {
+    return;
+  }
 
 
   if (movement_event_occured == true) {
@@ -396,7 +396,10 @@ Sm::Sm(Interface &h, bool print) :
     radio_entry(this), radio_stay(this), pickup_entry(this), pickup_stay(this), internal_control(
         this), h(h), print(print)
 {
+  uint32_t dummy;
+
   history = make_unique<History>(h.get_window_size());
+  h.get_debounce_sample_count(dummy, sync_delay);
 }
 
 Sm::~Sm()
@@ -532,11 +535,13 @@ Edge History::get_edge(uint8_t current, uint8_t previous)
 Statistics::Statistics(Interface &h, const History &history, uint32_t for_n_samples) :
     history(history), n(for_n_samples)
 {
+  uint32_t dummy;
+
   if (history.size() < n) {
     return;
   }
 
-  h.get_debounce_sample_count(debounce_samples);
+  h.get_debounce_sample_count(debounce_samples, dummy);
 
   //lambda accessors
   Get_history_input get_input_movement = [](const History::Entry &e)->const History::Input & { return e.movement; };

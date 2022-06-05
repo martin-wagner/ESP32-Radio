@@ -181,9 +181,8 @@ class State_pickup : public Abstract_state
     //we handle only one event within this time window!
     const uint32_t TICKS_EVENT_WINDOW = 500 / MS_TO_TICK_DIVIDER;
 
+    uint32_t count = 0;
     bool movement_event_occured = false;
-
-    int count = 0;
 
 };
 
@@ -302,11 +301,14 @@ class Interface
     virtual uint32_t get_window_size() = 0;
 
     /**
-     * signal needs to be unchanged for this number of samples to be valid
+     * factors for input sampling / debouncing
      *
      * @remark no larger than window size
+     *
+     * @param stable input needs to be stable-high for <n> samples
+     * @param delay syncronise events to movement event after <n> samples
      */
-    virtual void get_debounce_sample_count(uint32_t &s) = 0;
+    virtual void get_debounce_sample_count(uint32_t &stable, uint32_t &delay) = 0;
 
     /**
      * is called when button "left" is pressed to indentation
@@ -386,6 +388,7 @@ class Sm
     std::unique_ptr<History> history;
     const bool print;
 
+    uint32_t sync_delay;
 };
 
 /**

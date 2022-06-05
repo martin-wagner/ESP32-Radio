@@ -28,11 +28,12 @@ class TestStatesPickup : public ::testing::Test
     NiceMock<MockInterface> mock_interface;
 
     const uint32_t debounce_samples = 3;
+    const uint32_t sample_delay = 2;
 
     void SetUp()
     {
       ON_CALL(mock_interface, get_debounce_sample_count)
-          .WillByDefault(DoAll(SetArgReferee<0>(debounce_samples)));
+          .WillByDefault(DoAll(SetArgReferee<0>(debounce_samples), SetArgReferee<1>(debounce_samples)));
       ON_CALL(mock_interface, get_window_size)
           .WillByDefault(Return(100));
     }
@@ -721,8 +722,7 @@ TEST_F(TestStatesPickup, TestPickupEventsLeft)
   }
 }
 
-/*
- * Pickup mode active
+/* * Pickup mode active
  *
  * enough events to trigger "far left". clean event generation, no bouncing/noise involved
  */
@@ -1004,6 +1004,45 @@ TEST_F(TestStatesPickup, TestPickupEventsMulti4)
   EXPECT_CALL(mock_interface, event_radio_is_active(Eq(false))).Times(1);
 
   for (i = 0; i < 10000; ++i) {
+    dut.tick();
+  }
+}
+
+/*
+ * Pickup mode active
+ *
+ * enough events to trigger "far left". left event triggered after movement event
+ */
+TEST_F(TestStatesPickup, TestPickupEventsFarLeftDelayed)
+{
+  uint32_t i;
+  Sm dut(mock_interface, false);
+
+  EXPECT_CALL(mock_interface, read_pickup_input)
+      .WillRepeatedly(DoAll(SetArgReferee<0>(true), Return(true)));
+  {
+    InSequence s;
+    EXPECT_CALL(mock_interface, read_switch_inputs)
+        .Times(10)
+        .WillRepeatedly(DoAll(SetArgReferee<0>(0), SetArgReferee<1>(0), SetArgReferee<2>(0)));
+    EXPECT_CALL(mock_interface, read_switch_inputs)
+        .Times(5)
+        .WillRepeatedly(DoAll(SetArgReferee<0>(1), SetArgReferee<1>(1), SetArgReferee<2>(1)));
+    EXPECT_CALL(mock_interface, read_switch_inputs)
+        .Times(2)
+        .WillRepeatedly(DoAll(SetArgReferee<0>(0), SetArgReferee<1>(1), SetArgReferee<2>(1)));
+    EXPECT_CALL(mock_interface, read_switch_inputs)
+        .WillRepeatedly(DoAll(SetArgReferee<0>(0), SetArgReferee<1>(0), SetArgReferee<2>(0)));
+  }
+  EXPECT_CALL(mock_interface, get_dial_sm_state)
+      .WillRepeatedly(SetArgReferee<0>(dial::State::WAITING));
+  EXPECT_CALL(mock_interface, event_left).Times(0);
+  EXPECT_CALL(mock_interface, event_far_left).Times(1);
+  EXPECT_CALL(mock_interface, event_right).Times(0);
+  EXPECT_CALL(mock_interface, event_far_right).Times(0);
+  EXPECT_CALL(mock_interface, event_radio_is_active(Eq(false))).Times(1);
+
+  for (i = 0; i < 25; ++i) {
     dut.tick();
   }
 }

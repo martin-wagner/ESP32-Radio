@@ -225,6 +225,7 @@ void State_pickup::check_generate_events()
 
   auto fast = stats().fast.valid_event;
   auto left = stats().left.valid_event;
+  auto left_edges = stats().left.edge_count;
   if (fast && left) {
     sm->h.event_far_left();
     dbgprint ( "rocker left fast" ) ;
@@ -235,8 +236,14 @@ void State_pickup::check_generate_events()
     sm->h.event_left();
     dbgprint ( "rocker left" ) ;
   } else if ( ! fast && ! left) {
-    sm->h.event_right();
-    dbgprint ( "rocker right" ) ;
+    if (left_edges != 0) {
+      //no valid left event, but edges seen -> most likely pressed for too short.
+      //prefer to drop valid event instead of executing an invalid one
+      dbgprint ( "rocker right / left ??" ) ;
+    } else {
+      sm->h.event_right();
+      dbgprint ( "rocker right" ) ;
+    }
   }
 }
 

@@ -1,0 +1,47 @@
+  add_sample(false);
+  add_sample(false);
+  add_sample(false);
+  add_sample(false);
+  add_sample(false);
+  add_sample(false);
+  add_sample(false);
+  add_sample(false);
+  add_sample(false);
+  add_sample(false);
+  add_sample(false);
+  add_sample(false);
+  add_sample(true );
+  add_sample(true );
+  add_sample(true );
+  add_sample(true );
+  add_sample(true );
+  add_sample(true );
+  add_sample(true );
+  add_sample(true );
+  add_sample(true );
+  add_sample(true );
+  add_sample(true );
+  add_sample(true );
+  add_sample(true );
+  add_sample(true );
+  add_sample(true );
+  add_sample(true );
+  add_sample(true );
+  add_sample(true );
+  add_sample(false); //<-- transition
+  add_sample(true ); //<-- bounce
+  add_sample(true );
+  add_sample(false); //<-- stable
+  add_sample(false);
+  add_sample(false);
+  add_sample(false);
+  add_sample(false);
+  add_sample(false);
+  add_sample(false);
+  add_sample(false);
+  add_sample(false);
+  add_sample(false);
+  add_sample(false);
+  add_sample(false);
+  add_sample(false);
+  add_sample(false); // <-- newest sample

@@ -22,7 +22,7 @@ class MockInterface : public Interface
   MOCK_METHOD(bool, read_pickup_input, (uint8_t &active), (override));
   MOCK_METHOD(void, get_dial_sm_state, (dial::State &state), (override));
   MOCK_METHOD(uint32_t, get_window_size, (), (override));
-  MOCK_METHOD(void, get_debounce_sample_count, (uint32_t &pos, uint32_t &neg), (override));
+  MOCK_METHOD(void, get_debounce_sample_count, (uint32_t &s), (override));
   MOCK_METHOD(void, event_left, (), (override));
   MOCK_METHOD(void, event_far_left, (), (override));
   MOCK_METHOD(void, event_right, (), (override));

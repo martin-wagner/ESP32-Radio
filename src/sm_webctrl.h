@@ -306,7 +306,7 @@ class Interface
      *
      * @remark no larger than window size
      */
-    virtual void get_debounce_sample_count(uint32_t &pos, uint32_t &neg) = 0;
+    virtual void get_debounce_sample_count(uint32_t &s) = 0;
 
     /**
      * is called when button "left" is pressed to indentation
@@ -448,8 +448,8 @@ class Statistics
 
     struct Input {
       bool state;           //current pin state
-      bool valid_event;     //valid edge (according to /todo ... found in history
-      uint32_t edge_count;  //<n> edges in history
+      bool valid_event;     //valid edge (according to debounce routine) found in history
+      uint32_t edge_count;  //<n> edges (any) in history
     };
 
     struct S {
@@ -470,10 +470,7 @@ class Statistics
     const History &history;
     const uint32_t n;
 
-    struct {
-      uint32_t pos_edges;
-      uint32_t neg_edges;
-    } debounce;
+    uint32_t debounce_samples;
 
   private:
 

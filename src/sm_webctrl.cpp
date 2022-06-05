@@ -536,7 +536,7 @@ Statistics::Statistics(Interface &h, const History &history, uint32_t for_n_samp
     return;
   }
 
-  h.get_debounce_sample_count(debounce.pos_edges, debounce.neg_edges);
+  h.get_debounce_sample_count(debounce_samples);
 
   //lambda accessors
   Get_history_input get_input_movement = [](const History::Entry &e)->const History::Input & { return e.movement; };
@@ -546,8 +546,6 @@ Statistics::Statistics(Interface &h, const History &history, uint32_t for_n_samp
   set_stats_single(stats.movement, get_input_movement);
   set_stats_single(stats.fast,     get_input_fast);
   set_stats_single(stats.left,     get_input_left);
-
-  //todo event mit fast + move tasten loslassen erkennen...
 
   valid = true;
 }
@@ -560,16 +558,14 @@ const Statistics::S& Statistics::get()
 void Statistics::set_stats_single(Input &input, Get_history_input &get_history_input)
 {
   uint32_t i;
-  uint32_t debounce_pos_counter;
-  uint32_t debounce_neg_counter;
+  uint32_t debounce_counter;
 
   input.valid_event = false;
   input.edge_count = 0;
   input.state = get_history_input(*history.current()).state;
 
   //search for valid events, count edges
-  debounce_pos_counter = 0;
-  debounce_neg_counter = 0;
+  debounce_counter = 0;
   for (i = 0; i < n; i++) { //newest to oldest
     const auto &sample = get_history_input(*history.get(i));
 
@@ -577,8 +573,7 @@ void Statistics::set_stats_single(Input &input, Get_history_input &get_history_i
       case Edge::RISING:
         input.edge_count ++;
         //event detection on falling edge -> start new detection on rising edge
-        debounce_pos_counter = 0;
-        debounce_neg_counter = 0;
+        debounce_counter = 0;
         break;
       case Edge::FALLING:
         input.edge_count ++;
@@ -586,11 +581,9 @@ void Statistics::set_stats_single(Input &input, Get_history_input &get_history_i
       case Edge::NONE:
       default:
         if (sample.state == true) {
-          debounce_pos_counter ++;
-        } else {
-          debounce_neg_counter ++;
+          debounce_counter ++;
         }
-        if ((debounce_pos_counter >= debounce.pos_edges) && (debounce_neg_counter >= debounce.neg_edges)) {
+        if (debounce_counter >= debounce_samples) {
           input.valid_event = true;
         }
         break;

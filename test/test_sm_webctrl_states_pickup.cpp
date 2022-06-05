@@ -27,13 +27,12 @@ class TestStatesPickup : public ::testing::Test
 
     NiceMock<MockInterface> mock_interface;
 
-    const uint32_t debounce_pos_edges = 3;
-    const uint32_t debounce_neg_edges = 3;
+    const uint32_t debounce_samples = 3;
 
     void SetUp()
     {
       ON_CALL(mock_interface, get_debounce_sample_count)
-          .WillByDefault(DoAll(SetArgReferee<0>(debounce_pos_edges), SetArgReferee<1>(debounce_neg_edges)));
+          .WillByDefault(DoAll(SetArgReferee<0>(debounce_samples)));
       ON_CALL(mock_interface, get_window_size)
           .WillByDefault(Return(100));
     }

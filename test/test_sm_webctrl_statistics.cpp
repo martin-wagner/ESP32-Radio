@@ -28,8 +28,7 @@ class TestStatistics : public ::testing::Test
     const uint32_t history_size = 20000;
     History history;
 
-    const uint32_t debounce_pos_edges = 4;
-    const uint32_t debounce_neg_edges = 5;
+    const uint32_t debounce_samples = 4;
 
     void add_sample(bool m_s = false, bool f_s = false, bool l_s = false,
         dial::State d_s = dial::State::WAITING)
@@ -48,7 +47,7 @@ class TestStatistics : public ::testing::Test
     void SetUp()
     {
       ON_CALL(mock_interface, get_debounce_sample_count)
-          .WillByDefault(DoAll(SetArgReferee<0>(debounce_pos_edges), SetArgReferee<1>(debounce_neg_edges)));
+          .WillByDefault(DoAll(SetArgReferee<0>(debounce_samples)));
     }
 
     void TearDown()
@@ -237,19 +236,19 @@ TEST_F(TestStatistics, TestCounting)
 TEST_F(TestStatistics, TestEvents)
 {
   EXPECT_CALL(mock_interface, get_debounce_sample_count)
-      .WillRepeatedly(DoAll(SetArgReferee<0>(2), SetArgReferee<1>(3)));
+      .WillRepeatedly(DoAll(SetArgReferee<0>(2)));
 
 #include "samples/basis.txt"
 
   /*
   detection works as following, with the assumption:
-    valid event two samples high, three low, detection on falling edge
+    valid event two samples high, detection begins on falling edge
 
     add_sample(true,  ..., ..., ...); // <-- oldest sample
     add_sample(true,  ..., ..., ...);
     add_sample(true,  ..., ..., ...);
-    add_sample(true,  ..., ..., ...); // sample - 2
-    add_sample(true,  ..., ..., ...); // sample - 1
+    add_sample(true,  ..., ..., ...);
+    add_sample(true,  ..., ..., ...);
                      <--- falling edge from time point of view
     add_sample(false, ..., ..., ...); //edge detection
     add_sample(false, ..., ..., ...); // sample + 1
@@ -273,6 +272,19 @@ TEST_F(TestStatistics, TestEvents)
   EXPECT_TRUE(dut().left.valid_event);
 }
 
+TEST_F(TestStatistics, TestDebounce)
+{
+  EXPECT_CALL(mock_interface, get_debounce_sample_count)
+      .WillRepeatedly(DoAll(SetArgReferee<0>(5)));
+
+#include "samples/debounce.txt"
+
+  Statistics dut(mock_interface, history, history.size());
+
+  ASSERT_TRUE(dut.are_valid());
+  EXPECT_TRUE(dut().movement.valid_event);
+}
+
 //todo test statistics for pick-up detection without pick-up enabled input
-//test cases in test/samples dir
+//test data in test/samples dir
 

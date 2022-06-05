@@ -6115,19 +6115,19 @@ class Webctrl_interface_implementation : public webctrl::Interface
     virtual void event_left()
     {
       const char cmd_downpreset[sizeof(cmd)] = "downpreset=1";
-      //xQueueSend(inputqueue, cmd_downpreset, 0);
+      xQueueSend(inputqueue, cmd_downpreset, 0);
     }
 
     virtual void event_far_left()
     {
       const char cmd_preset1[sizeof(cmd)] = "preset=1";
-      //xQueueSend(inputqueue, cmd_preset1, 0);
+      xQueueSend(inputqueue, cmd_preset1, 0);
     }
 
     virtual void event_right()
     {
       const char cmd_uppreset[sizeof(cmd)] = "uppreset=1";
-      //xQueueSend(inputqueue, cmd_uppreset, 0);
+      xQueueSend(inputqueue, cmd_uppreset, 0);
     }
 
     virtual void event_far_right()

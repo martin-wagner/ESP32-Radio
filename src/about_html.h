@@ -26,12 +26,13 @@ const char about_html[] PROGMEM = R"=====(
   </center>
 	<p>ESP32 Radio -- Webradio Receiver and Remote Control attachment for SABA Automatic 6-3D Radio Receivers.<br>
         This project is documented at <a target="blank" href="https://github.com/martin-wagner/ESP32-Radio">Github</a>.</p>
-        <p>Author: Martin Wagner DL2WAG <br>
+  <p>Author: Martin Wagner DL2WAG </p>
 	<p>SABA ESP32 Webradio and Remote Control is based on ESP32 Radio from Ed Smallenburg <a target="blank" href="https://github.com/Edzelf/ESP32-radio">Github</a>.</p>
 	<p>Author: Ed Smallenburg (ed@smallenburg.nl)<br>
 	Webinterface design: <a target="blank" href="http://www.sanderjochems.nl/">Sander Jochems</a><br>
 	App (Android): <a target="blank" href="https://play.google.com/store/apps/details?id=com.thunkable.android.sander542jochems.ESP_Radio">Sander Jochems</a><br>
 	Date: May 2021</p>
+  <p>Build: 2022-06-19 -- 1</p>
  </body>
 </html>
 )=====" ;

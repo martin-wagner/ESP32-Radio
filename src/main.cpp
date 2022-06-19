@@ -170,10 +170,9 @@
 #define VERSION     "Mon, 28 Jun 2021 12:40:00 GMT"
 // ESP32-Radio can be updated (OTA) to the latest version from a remote server.
 // The download uses the following server and files:
-//#define UPDATEHOST  "smallenburg.nl"                    // Host for software updates
-#define UPDATEHOST  "127.0.0.1"                           // no automatic update
-#define BINFILE     "/Arduino/ESP32_radio/firmware.bin" // Binary file name for update software
-#define TFTFILE     "/Arduino/ESP32-Radio.tft"          // Binary file name for update NEXTION image
+#define UPDATEHOST  "martinwag.atwebpages.com"          // Host for software updates. No encryption supported, so can't be on github...
+#define BINFILE     "/ESP32_radio/firmware.bin"         // Binary file name for update software
+#define TFTFILE     "/ESP32_radio/ESP32-Radio.tft"      // Binary file name for update NEXTION image
 //
 // Define type of local filesystem(s).  See documentation.
 //#define CH376                          // For CXH376 support (reading files from USB stick)
@@ -456,6 +455,7 @@ bool              reqtone = false ;                      // New tone setting req
 bool              muteflag = false ;                     // Mute output
 bool              resetreq = false ;                     // Request to reset the ESP32
 bool              updatereq = false ;                    // Request to update software from remote host
+bool              updateactive = false;                  // OTA Update in progress
 bool              NetworkFound = false ;                 // True if WiFi network connected
 bool              mqtt_on = false ;                      // MQTT in use
 String            networks ;                             // Found networks in the surrounding
@@ -2371,6 +2371,7 @@ void update_software ( const char* lstmodkey, const char* updatehost, const char
   String      lstmod = "" ;                                     // Last modified timestamp in NVS
   String      newlstmod ;                                       // Last modified from host
   
+  updateactive = true;                                          // update in progress
   updatereq = false ;                                           // Clear update flag
   otastart() ;                                                  // Show something on screen
   stop_mp3client () ;                                           // Stop input stream
@@ -2380,6 +2381,7 @@ void update_software ( const char* lstmodkey, const char* updatehost, const char
   if ( !otaclient.connect ( updatehost, 80 ) )                  // Connect to host
   {
     dbgprint ( "Connect to updatehost failed!" ) ;
+    updateactive = false;
     return ;
   }
   otaclient.printf ( "GET %s HTTP/1.1\r\n"
@@ -2394,6 +2396,7 @@ void update_software ( const char* lstmodkey, const char* updatehost, const char
     {
       dbgprint ( "Connect to Update host Timeout!" ) ;
       otaclient.stop() ;
+      updateactive = false;
       return ;
     }
   }
@@ -2413,6 +2416,7 @@ void update_software ( const char* lstmodkey, const char* updatehost, const char
       if ( line.indexOf ( " 200 " ) < 0 )
       {
         dbgprint ( "Got a non 200 status code from server!" ) ;
+        updateactive = false;
         return ;
       }
     }
@@ -2427,6 +2431,7 @@ void update_software ( const char* lstmodkey, const char* updatehost, const char
   {
     dbgprint ( "No new version available" ) ;                   // No, show reason
     otaclient.flush() ;
+    updateactive = false;
     return ;    
   }
   if ( clength > 0 )
@@ -2451,6 +2456,7 @@ void update_software ( const char* lstmodkey, const char* updatehost, const char
     dbgprint ( "There was no content in the response" ) ;
     otaclient.flush() ;
   }
+  updateactive = false;
 }
 
 
@@ -5924,6 +5930,12 @@ void dialtask ( void * parameter )
   dial_interface_implementation.set_dial_relay(0, 0, 0);
 
   while (true) {
+
+    if (updateactive) {
+      vTaskDelay(1000);
+      continue;
+    }
+
     auto result = xQueueReceive(dialqueue, &request, wait);
     if (result == pdTRUE) {
       auto delay = dial_state_machine.cmd(request);
@@ -6005,6 +6017,11 @@ void amptask ( void * parameter )
   amp_interface_implementation.set_amp_relay(0, 0);
 
   while (true) {
+    if (updateactive) {
+      vTaskDelay(1000);
+      continue;
+    }
+
     auto result = xQueueReceive(ampqueue, &request, wait);
     if (result == pdTRUE) {
       delay = amp_state_machine.cmd(request);
@@ -6182,6 +6199,11 @@ void inputtask ( void * parameter )
   xLastWakeTime = xTaskGetTickCount();
   while (true)
   {
+    if (updateactive) {
+      vTaskDelay(1000);
+      continue;
+    }
+
     //check signal strength feedback
     station_state_machine.tick();
 

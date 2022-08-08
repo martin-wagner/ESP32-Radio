@@ -21,7 +21,7 @@ mqqprefix = none
 wifi_00 = SSID1/PASSWD1
 #wifi_01 = SSID2/PASSWD2
 #
-volume = 72
+volume = 100
 toneha = 0
 tonehf = 0
 tonela = 0

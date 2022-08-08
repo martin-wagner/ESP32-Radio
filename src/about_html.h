@@ -32,7 +32,7 @@ const char about_html[] PROGMEM = R"=====(
 	Webinterface design: <a target="blank" href="http://www.sanderjochems.nl/">Sander Jochems</a><br>
 	App (Android): <a target="blank" href="https://play.google.com/store/apps/details?id=com.thunkable.android.sander542jochems.ESP_Radio">Sander Jochems</a><br>
 	Date: May 2021</p>
-  <p>Build: 2022-06-19 -- 1</p>
+  <p>Build: 2022-08-08 -- 1</p>
  </body>
 </html>
 )=====" ;

@@ -1,3 +1,11 @@
+# Fork of ESP32-Radio for SABA Webradio
+
+https://github.com/martin-wagner/saba-6-3d-fernbedienung-hw
+
+This is modified web radio software specific for SABA Webradio hardware
+
+
+
 # ESP32-Radio
 ![alt text](esp32radio.jpg)
 Internet radio based on ESP32, VS1053 and a TFT screen.  Will compile in Arduino IDE.

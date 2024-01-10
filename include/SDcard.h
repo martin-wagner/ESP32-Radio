@@ -32,7 +32,8 @@ struct mp3spec_t                                      // For List of mp3 file on
   #include <SPI.h>
   #include <SD.h>
   #include <FS.h>
-  #define SDSPEED   2000000                             // SPI speed of SD card
+//  #define SDSPEED   2000000                             // SPI speed of SD card
+  #define SDSPEED 8000000 //we have proper pcb...
   #define TRACKLIST "/tracklist.dat"                    // File with tracklist on SD card
 
   bool            SD_okay = false ;                     // SD is okay

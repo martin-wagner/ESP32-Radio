@@ -175,6 +175,11 @@
 #define MQTT_SUBTOPIC     "command"                      // Command to receive from MQTT
 //
 #define heapspace heap_caps_get_largest_free_block ( MALLOC_CAP_8BIT )
+//saba webradio stuff
+#include "sm_dial.h"
+#include "sm_amp.h"
+#include "sm_station.h"
+#include "sm_webctrl.h"
 
 //**************************************************************************************************
 // Forward declaration and prototypes of various functions.                                        *
@@ -193,6 +198,9 @@ void        stop_mp3client () ;
 void        tftset ( uint16_t inx, const char *str ) ;
 void        tftset ( uint16_t inx, String& str ) ;
 void        playtask ( void* parameter ) ;                 // Task to play the stream on VS1053 or HELIX decoder
+void        dialtask ( void * parameter ) ;                // Task handle for dial movement control
+void        amptask ( void * parameter ) ;                 // Task handle for audio amp control
+void        inputtask ( void * parameter ) ;               // Task radio inputs
 void        displayinfo ( uint16_t inx ) ;
 void        gettime() ;
 void        reservepin ( int8_t rpinnr ) ;
@@ -358,7 +366,10 @@ PubSubClient         mqttclient ( wmqttclient ) ;        // Client for MQTT subs
 TaskHandle_t         maintask ;                          // Taskhandle for main task
 TaskHandle_t         xplaytask ;                         // Task handle for playtask
 TaskHandle_t         xsdtask ;                           // Task handle for SD task
-SemaphoreHandle_t    SPIsem = NULL ;                     // For exclusive SPI usage
+TaskHandle_t         xdialtask ;                         // Task handle for dial movement control
+TaskHandle_t         xamptask ;                          // Task handle for audio amp control
+TaskHandle_t         xinputtask ;                        // Task handle for radio input
+//SemaphoreHandle_t    SPIsem = NULL ;                     // For exclusive SPI usage todo is this in use anywhere
 hw_timer_t*          timer = NULL ;                      // For timer
 char                 timetxt[9] ;                        // Converted timeinfo
 char                 cmd[130] ;                          // Command from MQTT or Serial
@@ -367,6 +378,9 @@ const qdata_struct   startcmd = {QSTARTSONG} ;           // Command for radio/SD
 QueueHandle_t        radioqueue = 0 ;                    // Queue for icecast commands
 QueueHandle_t        dataqueue = 0 ;                     // Queue for mp3 datastream
 QueueHandle_t        sdqueue = 0 ;                       // For commands to sdfuncs
+QueueHandle_t        dialqueue ;                         // Queue for dial commands
+QueueHandle_t        ampqueue ;                          // Queue for audio amp commands
+QueueHandle_t        inputqueue ;                        // Queue for input from rocker switch
 qdata_struct         outchunk ;                          // Data to queue
 qdata_struct         inchunk ;                           // Data from queue
 uint8_t*             outqp = outchunk.buf ;              // Pointer to buffer in outchunk
@@ -402,8 +416,8 @@ uint32_t             ir_0 = 550 ;                        // Average duration of 
 uint32_t             ir_1 = 1650 ;                       // Average duration of an IR long pulse
 struct tm            timeinfo ;                          // Will be filled by NTP server
 bool                 time_req = false ;                  // Set time requested
-uint16_t             adcvalraw ;                         // ADC value (raw)
-uint16_t             adcval ;                            // ADC value (battery voltage, averaged)
+//uint16_t             adcvalraw ;                         // ADC value (raw) (gpio used otherwise)
+//uint16_t             adcval ;                            // ADC value (battery voltage) (gpio used otherwise)
 uint32_t             clength ;                           // Content length found in http header
 uint16_t             bltimer = 0 ;                       // Backlight time-out counter
 bool                 dsp_ok = false ;                    // Display okay or not
@@ -2305,7 +2319,7 @@ void scanRadioInput()
   if (result == pdTRUE)
   {
     reply = analyzeCmd ( cmd ) ;                 // Analyze command and handle it
-    dbgprint ( reply ) ;                         // Result for debugging
+    ESP_LOGI ( TAG, "%s", reply ) ;              // Result for debugging
   }
 }
 
@@ -2680,7 +2694,7 @@ void setup()
     ESP_LOGE ( TAG, "Partition NVS not found!" ) ;       // Very unlikely...
     while ( true ) ;                                     // Impossible to continue
   }
-  SPIsem = xSemaphoreCreateMutex(); ;                    // Semaphore for SPI bus
+  //SPIsem = xSemaphoreCreateMutex(); ;                    // Semaphore for SPI bus todo is this in use anywhere
   namespace_ID = FindNsID ( NAME ) ;                     // Find ID of our namespace in NVS
   fillkeylist() ;                                        // Fill keynames with all keys
   memset ( &ini_block, 0, sizeof(ini_block) ) ;          // Init ini_block
@@ -2882,7 +2896,7 @@ void setup()
     "Playtask",                                           // Name of task.
     2100,                                                 // Stack size of task
     NULL,                                                 // parameter of the task
-    2,                                                    // priority of the task
+    3,                                                    // priority of the task
     &xplaytask,                                           // Task handle to keep track of created task
     0 ) ;                                                 // Run on CPU 0
   vTaskDelay ( 2000 / portTICK_PERIOD_MS ) ;              // Allow playtask to start
@@ -3459,9 +3473,9 @@ void spfuncs()
         mqttpub.publishtopic() ;                                // Check if any publishing to do
       }
     }
-    adcvalraw = adc1_get_raw ( ADC1_CHANNEL_0 ) ;
-    adcval = ( 15 * adcval +                                    // Read ADC and do some filtering
-               adcvalraw ) / 16 ;
+//    adcvalraw = adc1_get_raw ( ADC1_CHANNEL_0 ) ;
+//    adcval = ( 15 * adcval +                                    // Read ADC and do some filtering
+//               adcvalraw ) / 16 ;
   }
 }
 
@@ -3561,7 +3575,13 @@ void loop()
       log_printf ( sformat, pcTaskGetTaskName ( xsdtask ),
                  uxTaskGetStackHighWaterMark ( xsdtask ) ) ;
     #endif
-    log_printf ( "ADC reading is %d, filtered %d\n", adcvalraw, adcval ) ;
+    log_printf ( sformat, pcTaskGetTaskName ( xdialtask ),
+                 uxTaskGetStackHighWaterMark ( xdialtask ) ) ;
+    log_printf ( sformat, pcTaskGetTaskName ( xamptask ),
+                 uxTaskGetStackHighWaterMark ( xamptask ) ) ;
+    log_printf ( sformat, pcTaskGetTaskName ( xinputtask ),
+                 uxTaskGetStackHighWaterMark ( xinputtask ) ) ;
+//    log_printf ( "ADC reading is %d, filtered %d\n", adcvalraw, adcval ) ;
     log_printf ( "%d IR interrupts seen\n", ir_intcount ) ;
     if ( pin_exists ( ini_block.sd_detect_pin ) )
     {
@@ -4203,9 +4223,6 @@ const char* analyzeCmd ( const char* par, const char* val )
   {
     value.remove ( 0, 7 ) ;                           // Yes, remove it
   }
-//  if ((argument.indexOf ( "volume" ) >= 0 ) &&        // Volume setting?
-//      (argument.indexOf ( "amp_" ) < 0 ))             // Not power amp Volume
-//todo
   else if ( argument == "volume" )                    // Volume setting?
   {
     // Volume may be of the form "upvolume", "downvolume" or "volume" for relative or absolute setting

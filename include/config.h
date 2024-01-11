@@ -7,7 +7,7 @@
 //#define NAME "ESP32-Radio"                              // Define name of the radio, also AP SSID
                                                           // Default is "ESP32-Radio"
 
-#define SDCARD                                          // Experimental: For SD card support (reading MP3-files)
+//#define SDCARD                                          // Experimental: For SD card support (reading MP3-files)
 
 //#define ETHERNET                                        // For wired Ethernet (WT32-ETH-01 or similar)
 

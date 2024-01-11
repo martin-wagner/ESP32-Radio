@@ -5097,8 +5097,9 @@ class Webctrl_interface_implementation : public webctrl::Interface
 
     virtual bool read_pickup_input(uint8_t &active)
     {
-      active = digitalRead(ini_block.saba_pickup_active_pin); //todo ist das so richtig rum?
+      active = digitalRead(ini_block.saba_pickup_active_pin);
       return true; //return false if pickup active not available //todo false not implemented in base class
+      //todo use config parameter for this
     }
 
     virtual void get_dial_sm_state(dial::State &state)
@@ -5142,14 +5143,14 @@ class Webctrl_interface_implementation : public webctrl::Interface
 
     virtual void event_radio_is_active(bool active)
     {
-      const char cmd_stop[sizeof(cmd)] = "stop2";
-      const char cmd_resume[sizeof(cmd)] = "resume";
-
-      if (active) {
-        xQueueSend(inputqueue, cmd_stop, 0);
-      } else {
-        xQueueSend(inputqueue, cmd_resume, 0);
-      }
+//      const char cmd_stop[sizeof(cmd)] = "stop2";
+//      const char cmd_resume[sizeof(cmd)] = "resume";
+//
+//      if (active) {
+//        xQueueSend(inputqueue, cmd_stop, 0);
+//      } else {
+//        xQueueSend(inputqueue, cmd_resume, 0);
+//      } //todo stop/resume not available in esp32radio v2. we need that
     }
 
 };

@@ -13,7 +13,7 @@
 
 #define FIXEDWIFI "SSID-11/PW12345"                       // Add a fixed SSID to the list (WiFi only)
 
-//#define ENABLEOTA                                       // OTA feature
+#define ENABLEOTA                                       // OTA feature
 
 // Define (just one) type of MP3/AAC decoder
 #define DEC_VS1053                                        // Hardware decoder for MP3, AAC, OGG

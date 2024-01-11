@@ -12,15 +12,17 @@
 
 namespace webctrl {
 
+const char* TAG = "webctrl" ;
+
 void Abstract_state::set_state(Abstract_state *state)
 {
   if (state == nullptr) {
-    dbgprint("invalid state switch");
+    ESP_LOGI ( TAG, "invalid state switch");
     return;
   }
 
 #ifdef SM_WEBCTRL_PRINTING
-  dbgprint("SM webctrl switch %s -> %s", sm->state->get_state_name(), state->get_state_name());
+  ESP_LOGI ( TAG, "SM webctrl switch %s -> %s", sm->state->get_state_name(), state->get_state_name());
 #endif
   sm->state = state;
   state->init_state();
@@ -47,13 +49,13 @@ bool Abstract_state::tick_precheck_handle()
       if (sm->state != &sm->pickup_stay) {
         set_state(&sm->pickup_stay);
         sm->h.event_radio_is_active(false);
-        dbgprint ( "switch to pickup (direct)" ) ;
+        ESP_LOGI ( TAG, "switch to pickup (direct)" ) ;
       }
     } else {
       if (sm->state != &sm->radio_stay) {
         set_state(&sm->radio_stay);
         sm->h.event_radio_is_active(true);
-        dbgprint ( "switch to radio (direct)" ) ;
+        ESP_LOGI ( TAG, "switch to radio (direct)" ) ;
       }
     }
     return true;
@@ -74,7 +76,7 @@ void State_radio_entry::tick()
   if (is_instable()) {
     set_state(&sm->pickup_entry);
     sm->h.event_radio_is_active(false);
-    dbgprint ( "switch to pickup (check)" ) ;
+    ESP_LOGI ( TAG, "switch to pickup (check)" ) ;
     return;
   }
 }
@@ -132,7 +134,7 @@ void State_radio_stay::tick()
   if (is_instable()) {
     set_state(&sm->pickup_entry);
     sm->h.event_radio_is_active(false);
-    dbgprint ( "switch to pickup (check)" ) ;
+    ESP_LOGI ( TAG, "switch to pickup (check)" ) ;
     return;
   }
   if ( ! is_stable()) {
@@ -228,21 +230,21 @@ void State_pickup::check_generate_events()
   auto left_edges = stats().left.edge_count;
   if (fast && left) {
     sm->h.event_far_left();
-    dbgprint ( "rocker left fast" ) ;
+    ESP_LOGI ( TAG, "rocker left fast" ) ;
   } else if (fast && ! left) {
     sm->h.event_far_right();
-    dbgprint ( "rocker right fast" ) ;
+    ESP_LOGI ( TAG, "rocker right fast" ) ;
   } else if ( ! fast && left) {
     sm->h.event_left();
-    dbgprint ( "rocker left" ) ;
+    ESP_LOGI ( TAG, "rocker left" ) ;
   } else if ( ! fast && ! left) {
     if (left_edges != 0) {
       //no valid left event, but edges seen -> most likely pressed for too short.
       //prefer to drop valid event instead of executing an invalid one
-      dbgprint ( "rocker right / left ??" ) ;
+      ESP_LOGI ( TAG, "rocker right / left ??" ) ;
     } else {
       sm->h.event_right();
-      dbgprint ( "rocker right" ) ;
+      ESP_LOGI ( TAG, "rocker right" ) ;
     }
   }
 }
@@ -258,7 +260,7 @@ void State_pickup_entry::tick()
     if (is_instable()) {
       set_state(&sm->radio_entry);
       sm->h.event_radio_is_active(true);
-      dbgprint ( "switch to radio (check)" ) ;
+      ESP_LOGI ( TAG, "switch to radio (check)" ) ;
       return;
     }
   }
@@ -316,7 +318,7 @@ void State_pickup_stay::tick()
     if (is_instable()) {
       set_state(&sm->radio_entry);
       sm->h.event_radio_is_active(true);
-      dbgprint ( "switch to radio (check)" ) ;
+      ESP_LOGI ( TAG, "switch to radio (check)" ) ;
       return;
     }
     if ( ! is_stable()) {
@@ -383,7 +385,7 @@ void State_internal_control::tick()
   if (ticks_waiting > TICKS_LEAVE) {
     set_state(&sm->radio_entry);
     sm->h.event_radio_is_active(true);
-    dbgprint ( "switch to radio (from control)" ) ;
+    ESP_LOGI ( TAG, "switch to radio (from control)" ) ;
   }
 }
 
@@ -519,7 +521,7 @@ void History::print_sample(uint32_t i) const
     return;
   }
 
-  dbgprint(
+  ESP_LOGI ( TAG,
       "    add_sample((bool)%d, (bool)%d, (bool)%d, (dial::State)%d);",
       entry->movement.state, entry->fast.state, entry->left.state, entry->dial_state);
 }

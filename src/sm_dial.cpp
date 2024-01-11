@@ -9,21 +9,23 @@
 
 namespace dial {
 
+const char* TAG = "dial" ;
+
 void Abstract_state::timer()
 {
-  dbgprint ( "timer" ) ;
+  ESP_LOGI ( TAG, "timer" ) ;
   stop();
 }
 
 void Abstract_state::set_state (Abstract_state *state)
 {
   if (state == nullptr) {
-    dbgprint("invalid state switch");
+    ESP_LOGI ( TAG, "invalid state switch");
     return;
   }
 
 #ifdef SM_DIAL_PRINTING
-  dbgprint("SM Dial switch %s -> %s", sm->state->get_state_name(), state->get_state_name());
+  ESP_LOGI ( TAG, "SM Dial switch %s -> %s", sm->state->get_state_name(), state->get_state_name());
 #endif
   sm->state = state;
   state->init_state();
@@ -34,7 +36,7 @@ void Abstract_state::stop()
   sm->h.set_dial_relay(0, 0, 0);
   set_state(&sm->wait);
 
-  dbgprint ( "stopping dial movement" ) ;
+  ESP_LOGI ( TAG, "stopping dial movement" ) ;
 }
 
 Time_ms State_wait::cmd(Saba_remote_control &request)
@@ -112,7 +114,7 @@ const char* State_move_slow_left::get_state_name()
 void State_move_slow_left::set_dial_relay()
 {
   sm->h.set_dial_relay(1, 0, 0);
-  dbgprint ( "moving dial to the left" ) ;
+  ESP_LOGI ( TAG, "moving dial to the left" ) ;
 }
 
 const char* State_move_slow_right::get_state_name()
@@ -124,7 +126,7 @@ const char* State_move_slow_right::get_state_name()
 void State_move_slow_right::set_dial_relay()
 {
   sm->h.set_dial_relay(0, 1, 0);
-  dbgprint ( "moving dial to the right" ) ;
+  ESP_LOGI ( TAG, "moving dial to the right" ) ;
 }
 
 const char* State_move_fast_left::get_state_name()
@@ -136,7 +138,7 @@ const char* State_move_fast_left::get_state_name()
 void State_move_fast_left::set_dial_relay()
 {
   sm->h.set_dial_relay(1, 0, 1);
-  dbgprint ( "fast moving dial to the left" ) ;
+  ESP_LOGI ( TAG, "fast moving dial to the left" ) ;
 }
 
 const char* State_move_fast_right::get_state_name()
@@ -148,7 +150,7 @@ const char* State_move_fast_right::get_state_name()
 void State_move_fast_right::set_dial_relay()
 {
   sm->h.set_dial_relay(0, 1, 1);
-  dbgprint ( "fast moving dial to the right" ) ;
+  ESP_LOGI ( TAG, "fast moving dial to the right" ) ;
 }
 
 Time_ms State_search::cmd(Saba_remote_control &request)
@@ -193,7 +195,7 @@ const char* State_search_leave_left::get_state_name()
 void State_search_leave_left::set_dial_relay()
 {
   sm->h.set_dial_relay(1, 0, 0);
-  dbgprint ( "searching for station to the left" ) ;
+  ESP_LOGI ( TAG, "searching for station to the left" ) ;
 }
 
 const char* State_search_leave_right::get_state_name()
@@ -205,7 +207,7 @@ const char* State_search_leave_right::get_state_name()
 void State_search_leave_right::set_dial_relay()
 {
   sm->h.set_dial_relay(0, 1, 0);
-  dbgprint ( "searching for station to the right" ) ;
+  ESP_LOGI ( TAG, "searching for station to the right" ) ;
 }
 
 Time_ms State_search_next::cmd(Saba_remote_control &request)
@@ -213,7 +215,7 @@ Time_ms State_search_next::cmd(Saba_remote_control &request)
   switch (request.cmd)
   {
     case Saba_remote_control_cmd::DIAL_STATION_ACTIVE:
-      dbgprint ( "station found!" ) ;
+      ESP_LOGI ( TAG, "station found!" ) ;
       stop();
       break;
     default:

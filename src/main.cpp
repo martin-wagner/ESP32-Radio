@@ -133,7 +133,6 @@
 #include <freertos/queue.h>                               // FreeRtos queue support
 #include <freertos/task.h>                                // FreeRtos task handling
 #include <esp_task_wdt.h>
-#include <esp_partition.h>
 #include <driver/adc.h>
 #include <base64.h>                                       // For Basic authentication
 #include <SPIFFS.h>                                       // Filesystem
@@ -425,6 +424,7 @@ int                  ir_intcount = 0 ;                   // For test IR interrup
 bool                 spftrigger = false ;                // To trigger execution of special functions
 const char*          fixedwifi = "" ;                    // Used for FIXEDWIFI option
 std::vector<WifiInfo_t> wifilist ;                       // List with wifi_xx info
+bool                 updateactive = false;               // firmware update in progress
 
 // nvs stuff
 nvs_page                nvsbuf ;                         // Space for 1 page of NVS info
@@ -985,13 +985,6 @@ void nextPreset ( int16_t pnr, bool relative = false )
     {
       presetinfo.station_state = ST_PRESET ;                   // No, end playlist mode
     }
-    encryption = WiFi.encryptionType ( i ) ;
-    dbgprint ( "%2d - %-25s Signal: %3d dBm, Encryption %4s, %s",
-               i + 1, WiFi.SSID(i).c_str(), WiFi.RSSI(i),
-               getEncryptionType ( encryption ),
-               acceptable ) ;
-    // Remember this network for later use
-    networks += WiFi.SSID(i) + String ( "|" ) ;
   }
   if ( presetinfo.station_state == ST_PRESET )                 // In preset mode?
   {
@@ -1699,6 +1692,7 @@ void otastart()
 
   ESP_LOGI ( TAG, "%s", p ) ;                      // Show event for debug
   tftset ( 2, p ) ;                                // Set screen segment bottom part
+  updateactive = true;
   mp3client->abort() ;                             // Stop client
   timerAlarmDisable ( timer ) ;                    // Disable the timer
   disableCore0WDT() ;                              // Disable watchdog core 0
@@ -3459,8 +3453,8 @@ void spfuncs()
       time_req = false ;                                        // Yes, clear request
       displaytime ( timetxt ) ;                                 // Write to TFT screen
       displayvolume ( player_getVolume() ) ;                    // Show volume on display
-      displaybattery ( ini_block.bat0, ini_block.bat100,        // Show battery charge on display
-                       adcval ) ;
+//      displaybattery ( ini_block.bat0, ini_block.bat100,        // Show battery charge on display
+//                       adcval ) ;
     }
     if ( mqtt_on )
     {
@@ -4296,7 +4290,7 @@ const char* analyzeCmd ( const char* par, const char* val )
     myQueueSend ( radioqueue, &startcmd ) ;           // Signal radiofuncs()
     sprintf ( reply,
               "Select %s",                            // Format reply
-              host.c_str() ) ;
+              value.c_str() ) ;
     utf8ascii_ip ( reply ) ;                          // Remove possible strange characters
   }
   else if ( argument == "sleep" )                     // Sleep request?
@@ -4869,6 +4863,77 @@ void sdfuncs()
     }
   }
 #endif
+}
+
+//**************************************************************************************************
+//                                     Dial State Machine                                          *
+//**************************************************************************************************
+class Dial_interface_implementation : public dial::Interface
+{
+  public:
+
+    virtual void set_dial_relay(uint8_t left, uint8_t right, uint8_t fast)
+    {
+      if ((left != 0) && (right != 0)) {
+        //invalid request
+        set_dial_relay(0, 0, 0);
+        return;
+      }
+
+      digitalWrite(ini_block.saba_move_fast_pin, fast);
+
+      if (left) {
+        digitalWrite(ini_block.saba_move_right_pin, 0);
+        digitalWrite(ini_block.saba_move_left_pin, 1);
+      } else if (right) {
+        digitalWrite(ini_block.saba_move_left_pin, 0);
+        digitalWrite(ini_block.saba_move_right_pin, 1);
+      } else {
+        digitalWrite(ini_block.saba_move_right_pin, 0);
+        digitalWrite(ini_block.saba_move_left_pin, 0);
+      }
+    }
+    virtual Time_ms get_movement_limit()
+    {
+      return 30000; //dial moves from either end to the other within this time
+    }
+};
+Dial_interface_implementation dial_interface_implementation;
+dial::Sm dial_state_machine(dial_interface_implementation);
+
+//**************************************************************************************************
+//                                     Dial Task                                                   *
+//**************************************************************************************************
+// Receives remote control commands, translates them to control the corresponding relays,
+// ensures timeouts
+//**************************************************************************************************
+void dialtask ( void * parameter )
+{
+  Saba_remote_control request;
+  TickType_t wait = portMAX_DELAY;
+
+  //all relays output push-pull, off
+  pinMode ( ini_block.saba_move_fast_pin , OUTPUT ) ;
+  pinMode ( ini_block.saba_move_left_pin , OUTPUT ) ;
+  pinMode ( ini_block.saba_move_right_pin , OUTPUT ) ;
+  dial_interface_implementation.set_dial_relay(0, 0, 0);
+
+  while (true) {
+
+    if (updateactive) {
+      vTaskDelay(1000);
+      continue;
+    }
+
+    auto result = xQueueReceive(dialqueue, &request, wait);
+    if (result == pdTRUE) {
+      auto delay = dial_state_machine.cmd(request);
+      wait = pdMS_TO_TICKS(delay);
+    } else {
+      dial_state_machine.timer();
+      wait = portMAX_DELAY;
+    }
+  }
 }
 
 //**************************************************************************************************

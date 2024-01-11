@@ -17,6 +17,8 @@
 #include <stdint.h>
 #include <memory>
 
+#include <Arduino.h>
+
 //c++11 make_unique
 //https://stackoverflow.com/a/17903225
 #if __cplusplus == 201103L
@@ -26,9 +28,6 @@ std::unique_ptr<T> make_unique(Args&&... args)
     return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
 }
 #endif
-
-//pull in from main.c
-extern char* dbgprint ( const char* format, ... );
 
 //arduino.h "#define FALLING xyz". WTF???
 #undef FALLING
@@ -73,15 +72,5 @@ enum class Saba_input {
   FAST_RIGHT,
 };
 
-//struct Saba_pin
-//{
-//  int8_t         gpio ;                                  // Pin number
-//  uint32_t       scan_time;                              // for debouncing
-//
-//  bool           cur ;                                   // Current state, true = HIGH, false = LOW
-//
-//  Edge           edge;                                   // Current edge
-//  Edge           seen;                                   // Edge seen previously. Clear by writing "NONE"
-//}; //todo brauchen wir das?
 
 #endif /* SRC_SM_COMMON_H_ */

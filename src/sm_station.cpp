@@ -10,15 +10,17 @@
 
 namespace station {
 
+const char* TAG = "station" ;
+
 void Abstract_state::set_state(Abstract_state *state)
 {
   if (state == nullptr) {
-    dbgprint("invalid state switch");
+    ESP_LOGI ( TAG, "invalid state switch");
     return;
   }
 
 #ifdef SM_STATION_PRINTING
-  dbgprint("SM station switch %s -> %s", sm->state->get_state_name(), state->get_state_name());
+  ESP_LOGI ( TAG, "SM station switch %s -> %s", sm->state->get_state_name(), state->get_state_name());
 #endif
   sm->state = state;
   state->init_state();
@@ -38,7 +40,7 @@ bool Abstract_state::consider_active()
   auto av = get_average();
 
   if (av >= active_threshold) {
-    dbgprint ( "station active" ) ;
+    ESP_LOGI ( TAG, "station active" ) ;
     return true;
   }
   return false;
@@ -53,7 +55,7 @@ bool Abstract_state::consider_inactive()
   auto av = get_average();
 
   if (av <= inactive_threshold) {
-    dbgprint ( "station gone" ) ;
+    ESP_LOGI ( TAG, "station gone" ) ;
     return true;
   }
   return false;

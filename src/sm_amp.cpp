@@ -10,6 +10,8 @@
 
 namespace amp {
 
+const char* TAG = "amp" ;
+
 Time_ms Abstract_state::cmd(Saba_remote_control &request)
 {
   switch (request.cmd)
@@ -32,12 +34,12 @@ Time_ms Abstract_state::timer()
 void Abstract_state::set_state (Abstract_state *state)
 {
   if (state == nullptr) {
-    dbgprint("invalid state switch");
+    ESP_LOGE ( TAG, "invalid state switch");
     return;
   }
 
 #ifdef SM_AMP_PRINTING
-  dbgprint("SM amp switch %s -> %s", sm->state->get_state_name(), state->get_state_name());
+  ESP_LOGI ( TAG, "SM amp switch %s -> %s", sm->state->get_state_name(), state->get_state_name());
 #endif
   sm->state = state;
   state->init_state();
@@ -48,7 +50,7 @@ void Abstract_state::stop()
   sm->h.set_amp_relay(0, 0);
   set_state(&sm->wait);
 
-  dbgprint ( "stopping amp movement" ) ;
+  ESP_LOGI ( TAG, "stopping amp movement" ) ;
 }
 
 Time_ms State_wait::cmd(Saba_remote_control &request)
@@ -85,7 +87,7 @@ void State_wait::toggle_mute()
   } else {
     sm->h.set_mute_relay(1);
   }
-  dbgprint ( "volume mute" ) ;
+  ESP_LOGI ( TAG, "volume mute" ) ;
 }
 
 void State_volume::init_state()
@@ -103,7 +105,7 @@ const char* State_volume_up::get_state_name()
 void State_volume_up::set_amp_relay()
 {
   sm->h.set_amp_relay(1, 0);
-  dbgprint ( "volume up" ) ;
+  ESP_LOGI ( TAG, "volume up" ) ;
 }
 
 Time_ms State_volume_down::timer()
@@ -122,7 +124,7 @@ const char* State_volume_down::get_state_name()
 void State_volume_down::set_amp_relay()
 {
   sm->h.set_amp_relay(0, 1);
-  dbgprint ( "volume down" ) ;
+  ESP_LOGI ( TAG, "volume down" ) ;
 }
 
 Time_ms State_timeout::timer()
@@ -134,7 +136,7 @@ Time_ms State_timeout::timer()
 void State_timeout::init_state()
 {
   sm->h.set_amp_relay(0, 1);
-  dbgprint ( "volume down (timer)" ) ;
+  ESP_LOGI ( TAG, "volume down (timer)" ) ;
 }
 
 const char* State_timeout::get_state_name()
